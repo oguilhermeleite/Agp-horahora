@@ -177,16 +177,9 @@ export default function AGPHoraHora() {
       <div style={{ background: COLORS.blue, overflowX: "hidden" }}>
         {/* Top bar */}
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", padding: "10px 16px", gap: 14 }}>
-          {/* AGP sGlass SVG Logo */}
-          <div style={{ background: "white", borderRadius: 8, padding: "6px 10px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="72" height="36" viewBox="0 0 72 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* Arc */}
-              <path d="M6 22 Q36 2 66 22" stroke="#4A7FA5" strokeWidth="3.5" fill="none" strokeLinecap="round"/>
-              {/* AGP text */}
-              <text x="36" y="24" textAnchor="middle" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="13" fill="#2B2B2B" letterSpacing="2">AGP</text>
-              {/* SGLASS text */}
-              <text x="36" y="34" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="400" fontSize="7" fill="#4A7FA5" letterSpacing="3">SGLASS</text>
-            </svg>
+          {/* AGP sGlass real logo */}
+          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <img src="https://agpglass.com/wp-content/themes/agp/assets/images/logo_sglass_2026_white.png" alt="AGP sGlass" style={{ height: 40, width: "auto" }} />
           </div>
           <div>
             <div style={{ color: "white", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>HoraHora Opaco</div>
@@ -295,12 +288,12 @@ export default function AGPHoraHora() {
                   ))}
                 </div>
               </div>
-              <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={dadosGrafico} barGap={4}>
-                  <XAxis dataKey={xKey} tick={{ fontSize: 12, fill: COLORS.grayDark }} axisLine={false} tickLine={false} />
+              <ResponsiveContainer width="100%" height={240}>
+                <BarChart data={dadosGrafico} barGap={4} margin={{ bottom: 30 }}>
+                  <XAxis dataKey={xKey} tick={{ fontSize: 10, fill: COLORS.grayDark, angle: -35, textAnchor: "end", dy: 8 }} axisLine={false} tickLine={false} interval={0} />
                   <YAxis tick={{ fontSize: 12, fill: COLORS.grayDark }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontFamily: "'DM Sans'" }} />
-                  <Bar dataKey="aprovados" name="Aprovados" fill={COLORS.success} radius={[6,6,0,0]} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill="#4A7FA5" radius={[6,6,0,0]} />
                   <Bar dataKey="reprovados" name="Reprovados" fill={COLORS.danger} radius={[6,6,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
