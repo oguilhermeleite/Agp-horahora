@@ -142,7 +142,7 @@ export default function AGPHoraHora() {
   const xKey = periodo === "dia" ? "hora" : periodo === "semana" ? "dia" : "semana";
 
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", background: COLORS.gray, minHeight: "100vh", color: COLORS.text }}>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", background: COLORS.gray, minHeight: "100vh", color: COLORS.text, overflowX: "hidden", maxWidth: "100vw" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -174,8 +174,8 @@ export default function AGPHoraHora() {
       `}</style>
 
       {/* Header */}
-      <div style={{ background: COLORS.blue, padding: "0 24px" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64 }}>
+      <div style={{ background: COLORS.blue, padding: "0 16px", overflowX: "hidden" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, flexWrap: "wrap", gap: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "6px 12px" }}>
               <span style={{ color: "white", fontWeight: 700, fontSize: 15, fontFamily: "'DM Mono'", letterSpacing: 1 }}>AGP</span>
@@ -196,12 +196,12 @@ export default function AGPHoraHora() {
         </div>
       </div>
 
-      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "28px 24px" }}>
+      <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 12px", width: "100%", boxSizing: "border-box" }}>
 
         {/* DASHBOARD */}
         {tela === "dashboard" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
               {[
                 { label: "Cortados", valor: totais.cortados, cor: COLORS.blue },
                 { label: "Embolsados", valor: totais.embolsados, cor: COLORS.blueLight },
@@ -217,7 +217,7 @@ export default function AGPHoraHora() {
               ))}
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
               <div className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 12 }}>
                 <div style={{ fontSize: 13, color: COLORS.grayDark, fontWeight: 500 }}>Taxa de Aprovação — Autoclave</div>
                 <div style={{ position: "relative", width: 120, height: 120 }}>
@@ -246,7 +246,7 @@ export default function AGPHoraHora() {
 
               <div className="card">
                 <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.grayDark, marginBottom: 20 }}>Fluxo de Produção — Turno Atual</div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-around" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 8 }}>
                   {[
                     { label: "Corte", valor: totais.cortados, cor: COLORS.blue },
                     { seta: true },
@@ -588,7 +588,7 @@ export default function AGPHoraHora() {
 
         {/* PAINÉIS */}
         {tela === "paineis" && (
-          <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 20 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
             <div className="card" style={{ height: "fit-content" }}>
               <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Buscar Painel</div>
               <input className="input-field" placeholder="Digite o código..." maxLength={8}
