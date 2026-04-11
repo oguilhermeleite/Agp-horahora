@@ -57,7 +57,34 @@ const registrosHoraMock = [
   { intervalo: "09h → 10h", turno: "1º", cortados: 10, embolsados: 9, autoclave: 9, aprovados: 8, reprovados: 1, amostras: 3, matricula: "3789", observacao: null, data: "10/04/2025" },
 ];
 
-const FORM_HORA_INICIAL = { matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", reprovados_dobras: "", reprovados_mole: "", amostras: "", observacao: "" };
+const ciclosMock = [
+  {
+    id: "C001", dataEnvio: "10/04/2025", dataRetorno: "11/04/2025",
+    matricula: "3789", fimDeSemana: false, observacao: null,
+    paineis: [
+      { codigo: "35002456", reprocesso: false, resultado: "aprovado", defeito: null },
+      { codigo: "35002457", reprocesso: false, resultado: "reprovado", defeito: "dobras" },
+      { codigo: "35002458", reprocesso: true, resultado: "aprovado", defeito: null },
+      { codigo: "35002459", reprocesso: false, resultado: "aprovado", defeito: null },
+      { codigo: "35002460", reprocesso: false, resultado: "reprovado", defeito: "mole" },
+    ],
+    avaliado: true,
+  },
+  {
+    id: "C002", dataEnvio: "11/04/2025", dataRetorno: "12/04/2025",
+    matricula: "3789", fimDeSemana: false, observacao: null,
+    paineis: [
+      { codigo: "35002461", reprocesso: false, resultado: null, defeito: null },
+      { codigo: "35002462", reprocesso: false, resultado: null, defeito: null },
+      { codigo: "35002463", reprocesso: true, resultado: null, defeito: null },
+    ],
+    avaliado: false,
+  },
+];
+
+const FORM_CICLO_INICIAL = { matricula: "", dataEnvio: "", fimDeSemana: false, observacao: "", paineis: [] };
+
+{ matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", reprovados_dobras: "", reprovados_mole: "", amostras: "", observacao: "" };
 const FORM_PAINEL_INICIAL = { matricula: "", turno: "1º", codigo: "", tipo: "novo", intervalo: "07h → 08h", reprovados_dobras: "", reprovados_mole: "", amostras: "", motivoRetrabalho: "", descricaoRetrabalho: "" };
 
 export default function AGPHoraHora() {
@@ -72,7 +99,12 @@ export default function AGPHoraHora() {
   const [sucesso, setSucesso] = useState(false);
   const [errosHora, setErrosHora] = useState({});
   const [errosPainel, setErrosPainel] = useState({});
-  const [formHora, setFormHora] = useState(FORM_HORA_INICIAL);
+  const [ciclos, setCiclos] = useState(ciclosMock);
+  const [formCiclo, setFormCiclo] = useState(FORM_CICLO_INICIAL);
+  const [novoCodigo, setNovoCodigo] = useState("");
+  const [cicloAvaliando, setCicloAvaliando] = useState(null);
+  const [abaAutoclave, setAbaAutoclave] = useState("dashboard");
+
   const [formPainel, setFormPainel] = useState(FORM_PAINEL_INICIAL);
   const hoje = new Date().toLocaleDateString("pt-BR");
 
@@ -189,7 +221,7 @@ export default function AGPHoraHora() {
         </div>
         {/* Nav tabs */}
         <div style={{ display: "flex", background: "rgba(0,0,0,0.15)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-          {[["dashboard","📊 Dashboard"],["registro","✏️ Registrar"],["historico","📋 Histórico"],["paineis","🔲 Painéis"]].map(([k,v]) => (
+          {[["dashboard","📊 Dashboard"],["registro","✏️ Registrar"],["historico","📋 Histórico"],["paineis","🔲 Painéis"],["autoclave","🔥 Autoclave"]].map(([k,v]) => (
             <button key={k} onClick={() => setTela(k)}
               style={{ flex: 1, background: "none", border: "none", borderBottom: tela === k ? "3px solid white" : "3px solid transparent", cursor: "pointer", padding: "10px 4px", fontFamily: "'DM Sans'", fontSize: 12, fontWeight: tela === k ? 700 : 500, color: tela === k ? "white" : "rgba(255,255,255,0.6)", whiteSpace: "nowrap" }}>
               {v}
@@ -686,6 +718,334 @@ export default function AGPHoraHora() {
                 </div>
               )}
             </div>
+          </div>
+        )}
+
+        {/* AUTOCLAVE */}
+        {tela === "autoclave" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Sub nav */}
+            <div style={{ display: "flex", background: "white", borderRadius: 12, padding: 4, gap: 4, boxShadow: "0 1px 4px rgba(0,58,140,0.07)" }}>
+              {[["dashboard","📊 Visão Geral"],["novo","➕ Novo Ciclo"],["avaliar","✅ Avaliar Retorno"]].map(([k,v]) => (
+                <button key={k} onClick={() => setAbaAutoclave(k)}
+                  style={{ flex: 1, padding: "10px 8px", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Sans'", fontSize: 13, fontWeight: abaAutoclave === k ? 700 : 500, background: abaAutoclave === k ? COLORS.blue : "none", color: abaAutoclave === k ? "white" : COLORS.grayDark }}>
+                  {v}
+                </button>
+              ))}
+            </div>
+
+            {/* VISÃO GERAL */}
+            {abaAutoclave === "dashboard" && (() => {
+              const totalPaineis = ciclos.reduce((s, c) => s + c.paineis.length, 0);
+              const totalAvaliados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.length, 0);
+              const totalAprovados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.filter(p => p.resultado === "aprovado").length, 0);
+              const totalReprovados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.filter(p => p.resultado === "reprovado").length, 0);
+              const totalReprocesso = ciclos.reduce((s, c) => s + c.paineis.filter(p => p.reprocesso).length, 0);
+              const taxaAuto = totalAvaliados > 0 ? Math.round((totalAprovados / totalAvaliados) * 100) : 0;
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {/* Cards */}
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+                    {[
+                      { label: "Total Ciclos", valor: ciclos.length, cor: COLORS.blue },
+                      { label: "Painéis Enviados", valor: totalPaineis, cor: "#4A7FA5" },
+                      { label: "Reprocessos", valor: totalReprocesso, cor: COLORS.warning },
+                      { label: "Avaliados", valor: totalAvaliados, cor: COLORS.grayDark },
+                      { label: "Aprovados", valor: totalAprovados, cor: COLORS.success },
+                      { label: "Reprovados", valor: totalReprovados, cor: COLORS.danger },
+                    ].map(({ label, valor, cor }) => (
+                      <div key={label} className="card" style={{ textAlign: "center", padding: "14px 8px", borderTop: `3px solid ${cor}` }}>
+                        <div style={{ fontSize: 24, fontWeight: 700, color: cor }}>{valor}</div>
+                        <div style={{ fontSize: 11, color: COLORS.grayDark, marginTop: 4, fontWeight: 500 }}>{label}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Taxa de aprovação */}
+                  <div className="card" style={{ display: "flex", alignItems: "center", gap: 20 }}>
+                    <div style={{ position: "relative", width: 90, height: 90, flexShrink: 0 }}>
+                      <svg viewBox="0 0 90 90" width="90" height="90">
+                        <circle cx="45" cy="45" r="38" fill="none" stroke={COLORS.dangerLight} strokeWidth="10" />
+                        <circle cx="45" cy="45" r="38" fill="none" stroke={COLORS.success} strokeWidth="10"
+                          strokeDasharray={`${2 * Math.PI * 38 * taxaAuto / 100} ${2 * Math.PI * 38}`}
+                          strokeLinecap="round" transform="rotate(-90 45 45)" />
+                      </svg>
+                      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
+                        <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.success }}>{taxaAuto}%</div>
+                      </div>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação Geral</div>
+                      <div style={{ fontSize: 13, color: COLORS.grayDark }}>Baseado em {ciclos.filter(c => c.avaliado).length} ciclo(s) avaliado(s)</div>
+                      <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+                        <span style={{ fontSize: 13, color: COLORS.success, fontWeight: 600 }}>✓ {totalAprovados} aprovados</span>
+                        <span style={{ fontSize: 13, color: COLORS.danger, fontWeight: 600 }}>✗ {totalReprovados} reprovados</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Lista de ciclos */}
+                  <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+                    <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.gray}` }}>
+                      <div style={{ fontSize: 15, fontWeight: 700 }}>Ciclos Registrados</div>
+                    </div>
+                    {ciclos.map((c, i) => {
+                      const aprov = c.paineis.filter(p => p.resultado === "aprovado").length;
+                      const reprov = c.paineis.filter(p => p.resultado === "reprovado").length;
+                      const repro = c.paineis.filter(p => p.reprocesso).length;
+                      return (
+                        <div key={c.id} style={{ padding: "16px 20px", borderBottom: i < ciclos.length - 1 ? `1px solid ${COLORS.gray}` : "none", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                          <div>
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                              <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 14 }}>{c.id}</span>
+                              {c.fimDeSemana && <span className="tag" style={{ background: COLORS.purpleLight || "#F3E8FF", color: COLORS.purple, fontSize: 10 }}>Fim de semana</span>}
+                              <span className="tag" style={{ background: c.avaliado ? COLORS.successLight : COLORS.warningLight, color: c.avaliado ? COLORS.success : COLORS.warning, fontSize: 10 }}>
+                                {c.avaliado ? "✓ Avaliado" : "⏳ Aguardando"}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 12, color: COLORS.grayDark }}>
+                              Enviado: {c.dataEnvio} → Retorno: {c.dataRetorno} • #{c.matricula}
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                            <span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{c.paineis.length} painéis</span>
+                            {repro > 0 && <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning }}>↺ {repro} reprocesso</span>}
+                            {c.avaliado && <>
+                              <span className="tag" style={{ background: COLORS.successLight, color: COLORS.success }}>✓ {aprov}</span>
+                              <span className="tag" style={{ background: COLORS.dangerLight, color: COLORS.danger }}>✗ {reprov}</span>
+                            </>}
+                            {!c.avaliado && (
+                              <button onClick={() => { setCicloAvaliando(c.id); setAbaAutoclave("avaliar"); }}
+                                style={{ padding: "6px 12px", background: COLORS.blue, color: "white", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'" }}>
+                                Avaliar
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* NOVO CICLO */}
+            {abaAutoclave === "novo" && (
+              <div style={{ maxWidth: 600, margin: "0 auto", width: "100%" }}>
+                <div className="card" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  <div>
+                    <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Registrar Envio para Autoclave</div>
+                    <div style={{ fontSize: 13, color: COLORS.grayDark }}>Preencha os dados do ciclo antes de enviar</div>
+                  </div>
+
+                  {/* Matrícula + Data */}
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Matrícula</label>
+                      <input className="input-field" placeholder="Ex: 3789"
+                        value={formCiclo.matricula} onChange={e => setFormCiclo({ ...formCiclo, matricula: e.target.value.replace(/\D/g, "") })}
+                        style={{ fontFamily: "'DM Mono'", fontWeight: 600, letterSpacing: 2 }} />
+                    </div>
+                    <div>
+                      <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Data de Envio</label>
+                      <input className="input-field" type="date"
+                        value={formCiclo.dataEnvio} onChange={e => setFormCiclo({ ...formCiclo, dataEnvio: e.target.value })} />
+                    </div>
+                  </div>
+
+                  {/* Fim de semana */}
+                  <div>
+                    <button onClick={() => setFormCiclo({ ...formCiclo, fimDeSemana: !formCiclo.fimDeSemana })}
+                      style={{ padding: "10px 16px", border: `1.5px solid ${formCiclo.fimDeSemana ? COLORS.purple : COLORS.grayMid}`, background: formCiclo.fimDeSemana ? "#F3E8FF" : "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 500, cursor: "pointer", color: formCiclo.fimDeSemana ? COLORS.purple : COLORS.grayDark }}>
+                      {formCiclo.fimDeSemana ? "✓" : "○"} Ciclo de Fim de Semana
+                    </button>
+                  </div>
+
+                  {/* Adicionar painéis */}
+                  <div style={{ borderTop: `1px solid ${COLORS.gray}`, paddingTop: 16 }}>
+                    <div className="section-label" style={{ color: COLORS.blue }}>Painéis do Ciclo</div>
+                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+                      <input className="input-field" placeholder="Código do painel (8 dígitos)" maxLength={8}
+                        value={novoCodigo} onChange={e => setNovoCodigo(e.target.value.replace(/\D/g, ""))}
+                        style={{ fontFamily: "'DM Mono'", fontWeight: 600, letterSpacing: 2 }}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && novoCodigo.length === 8) {
+                            setFormCiclo({ ...formCiclo, paineis: [...formCiclo.paineis, { codigo: novoCodigo, reprocesso: false, resultado: null, defeito: null }] });
+                            setNovoCodigo("");
+                          }
+                        }} />
+                      <button onClick={() => {
+                        if (novoCodigo.length === 8) {
+                          setFormCiclo({ ...formCiclo, paineis: [...formCiclo.paineis, { codigo: novoCodigo, reprocesso: false, resultado: null, defeito: null }] });
+                          setNovoCodigo("");
+                        }
+                      }} style={{ padding: "10px 16px", background: COLORS.blue, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontSize: 14 }}>
+                        + Adicionar
+                      </button>
+                    </div>
+
+                    {formCiclo.paineis.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: "20px", color: COLORS.grayDark, fontSize: 13, background: COLORS.gray, borderRadius: 10 }}>
+                        Nenhum painel adicionado ainda
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {formCiclo.paineis.map((p, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.gray, borderRadius: 10, padding: "10px 14px" }}>
+                            <span style={{ fontFamily: "'DM Mono'", fontWeight: 600, color: COLORS.blue, fontSize: 15 }}>{p.codigo}</span>
+                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                              <button onClick={() => {
+                                const updated = [...formCiclo.paineis];
+                                updated[i] = { ...updated[i], reprocesso: !updated[i].reprocesso };
+                                setFormCiclo({ ...formCiclo, paineis: updated });
+                              }} style={{ padding: "5px 12px", border: `1.5px solid ${p.reprocesso ? COLORS.warning : COLORS.grayMid}`, background: p.reprocesso ? COLORS.warningLight : "white", borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer", color: p.reprocesso ? COLORS.warning : COLORS.grayDark }}>
+                                {p.reprocesso ? "↺ Reprocesso" : "↺ Marcar reprocesso"}
+                              </button>
+                              <button onClick={() => {
+                                const updated = formCiclo.paineis.filter((_, idx) => idx !== i);
+                                setFormCiclo({ ...formCiclo, paineis: updated });
+                              }} style={{ padding: "5px 10px", border: "none", background: COLORS.dangerLight, borderRadius: 8, color: COLORS.danger, cursor: "pointer", fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600 }}>
+                                ✕
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{ fontSize: 13, color: COLORS.grayDark, textAlign: "right", marginTop: 4 }}>
+                          Total: <strong>{formCiclo.paineis.length} painel(is)</strong>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Observação */}
+                  <div>
+                    <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Observação (opcional)</label>
+                    <textarea className="input-field" rows={2} placeholder="Ex: Carrinho 1 e 2 enviados juntos..."
+                      value={formCiclo.observacao} onChange={e => setFormCiclo({ ...formCiclo, observacao: e.target.value })}
+                      style={{ resize: "vertical" }} />
+                  </div>
+
+                  <button className="btn-primary" onClick={() => {
+                    if (!formCiclo.matricula || formCiclo.paineis.length === 0) return;
+                    const id = `C${String(ciclos.length + 1).padStart(3, "0")}`;
+                    const dataEnvio = formCiclo.dataEnvio ? new Date(formCiclo.dataEnvio).toLocaleDateString("pt-BR") : hoje;
+                    const dataRetorno = formCiclo.dataEnvio ? new Date(new Date(formCiclo.dataEnvio).getTime() + 86400000).toLocaleDateString("pt-BR") : hoje;
+                    setCiclos([...ciclos, { id, dataEnvio, dataRetorno, matricula: formCiclo.matricula, fimDeSemana: formCiclo.fimDeSemana, observacao: formCiclo.observacao || null, paineis: formCiclo.paineis, avaliado: false }]);
+                    setFormCiclo(FORM_CICLO_INICIAL);
+                    setAbaAutoclave("dashboard");
+                  }}>
+                    Confirmar Envio para Autoclave
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* AVALIAR RETORNO */}
+            {abaAutoclave === "avaliar" && (() => {
+              const ciclosPendentes = ciclos.filter(c => !c.avaliado);
+              const cicloAtual = cicloAvaliando ? ciclos.find(c => c.id === cicloAvaliando) : null;
+
+              const marcarResultado = (cicloId, codigoPainel, resultado, defeito) => {
+                setCiclos(ciclos.map(c => {
+                  if (c.id !== cicloId) return c;
+                  return { ...c, paineis: c.paineis.map(p => p.codigo === codigoPainel ? { ...p, resultado, defeito } : p) };
+                }));
+              };
+
+              const finalizarAvaliacao = (cicloId) => {
+                setCiclos(ciclos.map(c => c.id === cicloId ? { ...c, avaliado: true } : c));
+                setCicloAvaliando(null);
+                setAbaAutoclave("dashboard");
+              };
+
+              return (
+                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                  {!cicloAtual ? (
+                    <>
+                      {ciclosPendentes.length === 0 ? (
+                        <div className="card" style={{ textAlign: "center", padding: 40, color: COLORS.grayDark }}>
+                          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+                          <div style={{ fontSize: 15, fontWeight: 600 }}>Todos os ciclos já foram avaliados!</div>
+                        </div>
+                      ) : (
+                        <div className="card">
+                          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Ciclos Aguardando Avaliação</div>
+                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                            {ciclosPendentes.map(c => (
+                              <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.gray, borderRadius: 12, padding: "14px 16px", flexWrap: "wrap", gap: 8 }}>
+                                <div>
+                                  <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 15, marginBottom: 4 }}>{c.id}</div>
+                                  <div style={{ fontSize: 12, color: COLORS.grayDark }}>Enviado: {c.dataEnvio} • {c.paineis.length} painéis • #{c.matricula}</div>
+                                </div>
+                                <button onClick={() => setCicloAvaliando(c.id)}
+                                  style={{ padding: "8px 16px", background: COLORS.blue, color: "white", border: "none", borderRadius: 8, fontFamily: "'DM Sans'", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                                  Avaliar este ciclo
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </>
+                  ) : (
+                    <div className="card">
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
+                        <div>
+                          <div style={{ fontSize: 13, color: COLORS.grayDark, marginBottom: 2 }}>Avaliando ciclo</div>
+                          <div style={{ fontFamily: "'DM Mono'", fontSize: 22, fontWeight: 700, color: COLORS.blue }}>{cicloAtual.id} — {cicloAtual.dataEnvio}</div>
+                        </div>
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{cicloAtual.paineis.length} painéis</span>
+                          <span className="tag" style={{ background: COLORS.successLight, color: COLORS.success }}>✓ {cicloAtual.paineis.filter(p => p.resultado === "aprovado").length}</span>
+                          <span className="tag" style={{ background: COLORS.dangerLight, color: COLORS.danger }}>✗ {cicloAtual.paineis.filter(p => p.resultado === "reprovado").length}</span>
+                        </div>
+                      </div>
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+                        {cicloAtual.paineis.map((p, i) => (
+                          <div key={i} style={{ background: p.resultado === "aprovado" ? COLORS.successLight : p.resultado === "reprovado" ? COLORS.dangerLight : COLORS.gray, borderRadius: 12, padding: "12px 16px", border: `1.5px solid ${p.resultado === "aprovado" ? COLORS.success : p.resultado === "reprovado" ? COLORS.danger : COLORS.grayMid}` }}>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 15 }}>{p.codigo}</span>
+                                {p.reprocesso && <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning, fontSize: 10 }}>↺ Reprocesso</span>}
+                              </div>
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "aprovado", null)}
+                                  style={{ padding: "6px 12px", border: `1.5px solid ${COLORS.success}`, background: p.resultado === "aprovado" ? COLORS.success : "white", color: p.resultado === "aprovado" ? "white" : COLORS.success, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                                  ✓ Bom
+                                </button>
+                                <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "reprovado", "dobras")}
+                                  style={{ padding: "6px 10px", border: `1.5px solid ${COLORS.danger}`, background: p.resultado === "reprovado" && p.defeito === "dobras" ? COLORS.danger : "white", color: p.resultado === "reprovado" && p.defeito === "dobras" ? "white" : COLORS.danger, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                                  Dobras
+                                </button>
+                                <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "reprovado", "mole")}
+                                  style={{ padding: "6px 10px", border: `1.5px solid ${COLORS.warning}`, background: p.resultado === "reprovado" && p.defeito === "mole" ? COLORS.warning : "white", color: p.resultado === "reprovado" && p.defeito === "mole" ? "white" : COLORS.warning, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                                  Mole
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <div style={{ display: "flex", gap: 10 }}>
+                        <button onClick={() => setCicloAvaliando(null)}
+                          style={{ flex: 1, padding: "12px", border: `1.5px solid ${COLORS.grayMid}`, background: "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: COLORS.grayDark }}>
+                          Voltar
+                        </button>
+                        <button onClick={() => finalizarAvaliacao(cicloAtual.id)}
+                          style={{ flex: 2, padding: "12px", background: COLORS.success, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+                          ✓ Finalizar Avaliação
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
+
           </div>
         )}
 
