@@ -176,9 +176,17 @@ export default function AGPHoraHora() {
       {/* Header */}
       <div style={{ background: COLORS.blue, overflowX: "hidden" }}>
         {/* Top bar */}
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", padding: "12px 16px", gap: 12 }}>
-          <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "5px 10px", flexShrink: 0 }}>
-            <span style={{ color: "white", fontWeight: 700, fontSize: 14, fontFamily: "'DM Mono'", letterSpacing: 1 }}>AGP</span>
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", padding: "10px 16px", gap: 14 }}>
+          {/* AGP sGlass SVG Logo */}
+          <div style={{ background: "white", borderRadius: 8, padding: "6px 10px", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="72" height="36" viewBox="0 0 72 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+              {/* Arc */}
+              <path d="M6 22 Q36 2 66 22" stroke="#4A7FA5" strokeWidth="3.5" fill="none" strokeLinecap="round"/>
+              {/* AGP text */}
+              <text x="36" y="24" textAnchor="middle" fontFamily="Arial Black, sans-serif" fontWeight="900" fontSize="13" fill="#2B2B2B" letterSpacing="2">AGP</text>
+              {/* SGLASS text */}
+              <text x="36" y="34" textAnchor="middle" fontFamily="Arial, sans-serif" fontWeight="400" fontSize="7" fill="#4A7FA5" letterSpacing="3">SGLASS</text>
+            </svg>
           </div>
           <div>
             <div style={{ color: "white", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>HoraHora Opaco</div>
