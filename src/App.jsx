@@ -174,25 +174,25 @@ export default function AGPHoraHora() {
       `}</style>
 
       {/* Header */}
-      <div style={{ background: COLORS.blue, padding: "0 16px", overflowX: "hidden" }}>
-        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 64, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 10, padding: "6px 12px" }}>
-              <span style={{ color: "white", fontWeight: 700, fontSize: 15, fontFamily: "'DM Mono'", letterSpacing: 1 }}>AGP</span>
-            </div>
-            <div>
-              <div style={{ color: "white", fontWeight: 700, fontSize: 16 }}>HoraHora Opaco</div>
-              <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>Controle de Produção — Mantas de Aramida</div>
-            </div>
+      <div style={{ background: COLORS.blue, overflowX: "hidden" }}>
+        {/* Top bar */}
+        <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", padding: "12px 16px", gap: 12 }}>
+          <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "5px 10px", flexShrink: 0 }}>
+            <span style={{ color: "white", fontWeight: 700, fontSize: 14, fontFamily: "'DM Mono'", letterSpacing: 1 }}>AGP</span>
           </div>
-          <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.1)", borderRadius: 10, padding: 4 }}>
-            {[["dashboard","Dashboard"],["registro","Registrar"],["historico","Histórico"],["paineis","Painéis"]].map(([k,v]) => (
-              <button key={k} className="nav-btn" onClick={() => setTela(k)}
-                style={{ color: tela === k ? "white" : "rgba(255,255,255,0.7)", background: tela === k ? "rgba(255,255,255,0.2)" : "none" }}>
-                {v}
-              </button>
-            ))}
+          <div>
+            <div style={{ color: "white", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>HoraHora Opaco</div>
+            <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>Controle de Produção — Mantas de Aramida</div>
           </div>
+        </div>
+        {/* Nav tabs */}
+        <div style={{ display: "flex", background: "rgba(0,0,0,0.15)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
+          {[["dashboard","📊 Dashboard"],["registro","✏️ Registrar"],["historico","📋 Histórico"],["paineis","🔲 Painéis"]].map(([k,v]) => (
+            <button key={k} onClick={() => setTela(k)}
+              style={{ flex: 1, background: "none", border: "none", borderBottom: tela === k ? "3px solid white" : "3px solid transparent", cursor: "pointer", padding: "10px 4px", fontFamily: "'DM Sans'", fontSize: 12, fontWeight: tela === k ? 700 : 500, color: tela === k ? "white" : "rgba(255,255,255,0.6)", whiteSpace: "nowrap" }}>
+              {v}
+            </button>
+          ))}
         </div>
       </div>
 
