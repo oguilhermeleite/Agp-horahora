@@ -84,7 +84,7 @@ const ciclosMock = [
 
 const FORM_CICLO_INICIAL = { matricula: "", dataEnvio: "", fimDeSemana: false, observacao: "", paineis: [] };
 
-{ matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", reprovados_dobras: "", reprovados_mole: "", amostras: "", observacao: "" };
+const FORM_HORA_INICIAL = { matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", reprovados_dobras: "", reprovados_mole: "", amostras: "", observacao: "" };
 const FORM_PAINEL_INICIAL = { matricula: "", turno: "1º", codigo: "", tipo: "novo", intervalo: "07h → 08h", reprovados_dobras: "", reprovados_mole: "", amostras: "", motivoRetrabalho: "", descricaoRetrabalho: "" };
 
 export default function AGPHoraHora() {
