@@ -7,7 +7,7 @@ const COLORS = {
   success: "#0A7A4B", successLight: "#E6F4EF",
   danger: "#C0392B", dangerLight: "#FDECEA",
   warning: "#D97706", warningLight: "#FFF7ED",
-  text: "#0D1B3E", purple: "#6B21A8",
+  text: "#0D1B3E", purple: "#6B21A8", purpleLight: "#F3E8FF",
 };
 
 const INTERVALOS = [
