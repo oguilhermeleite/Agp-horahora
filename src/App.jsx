@@ -87,6 +87,192 @@ const FORM_CICLO_INICIAL = { matricula: "", dataEnvio: "", fimDeSemana: false, o
 const FORM_HORA_INICIAL = { matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", reprovados_dobras: "", reprovados_mole: "", amostras: "", observacao: "" };
 const FORM_PAINEL_INICIAL = { matricula: "", turno: "1º", codigo: "", tipo: "novo", intervalo: "07h → 08h", reprovados_dobras: "", reprovados_mole: "", amostras: "", motivoRetrabalho: "", descricaoRetrabalho: "" };
 
+function AutoclaveVisaoGeral({ ciclos, setCicloAvaliando, setAbaAutoclave, COLORS }) {
+  const totalPaineis = ciclos.reduce((s, c) => s + c.paineis.length, 0);
+  const totalAvaliados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.length, 0);
+  const totalAprovados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.filter(p => p.resultado === "aprovado").length, 0);
+  const totalReprovados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.filter(p => p.resultado === "reprovado").length, 0);
+  const totalReprocesso = ciclos.reduce((s, c) => s + c.paineis.filter(p => p.reprocesso).length, 0);
+  const taxaAuto = totalAvaliados > 0 ? Math.round((totalAprovados / totalAvaliados) * 100) : 0;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
+        {[
+          { label: "Total Ciclos", valor: ciclos.length, cor: COLORS.blue },
+          { label: "Painéis Enviados", valor: totalPaineis, cor: "#4A7FA5" },
+          { label: "Reprocessos", valor: totalReprocesso, cor: COLORS.warning },
+          { label: "Avaliados", valor: totalAvaliados, cor: COLORS.grayDark },
+          { label: "Aprovados", valor: totalAprovados, cor: COLORS.success },
+          { label: "Reprovados", valor: totalReprovados, cor: COLORS.danger },
+        ].map(({ label, valor, cor }) => (
+          <div key={label} className="card" style={{ textAlign: "center", padding: "14px 8px", borderTop: `3px solid ${cor}` }}>
+            <div style={{ fontSize: 24, fontWeight: 700, color: cor }}>{valor}</div>
+            <div style={{ fontSize: 11, color: COLORS.grayDark, marginTop: 4, fontWeight: 500 }}>{label}</div>
+          </div>
+        ))}
+      </div>
+      <div className="card" style={{ display: "flex", alignItems: "center", gap: 20 }}>
+        <div style={{ position: "relative", width: 90, height: 90, flexShrink: 0 }}>
+          <svg viewBox="0 0 90 90" width="90" height="90">
+            <circle cx="45" cy="45" r="38" fill="none" stroke={COLORS.dangerLight} strokeWidth="10" />
+            <circle cx="45" cy="45" r="38" fill="none" stroke={COLORS.success} strokeWidth="10"
+              strokeDasharray={`${2 * Math.PI * 38 * taxaAuto / 100} ${2 * Math.PI * 38}`}
+              strokeLinecap="round" transform="rotate(-90 45 45)" />
+          </svg>
+          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.success }}>{taxaAuto}%</div>
+          </div>
+        </div>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação Geral</div>
+          <div style={{ fontSize: 13, color: COLORS.grayDark }}>Baseado em {ciclos.filter(c => c.avaliado).length} ciclo(s) avaliado(s)</div>
+          <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
+            <span style={{ fontSize: 13, color: COLORS.success, fontWeight: 600 }}>✓ {totalAprovados} aprovados</span>
+            <span style={{ fontSize: 13, color: COLORS.danger, fontWeight: 600 }}>✗ {totalReprovados} reprovados</span>
+          </div>
+        </div>
+      </div>
+      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
+        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.gray}` }}>
+          <div style={{ fontSize: 15, fontWeight: 700 }}>Ciclos Registrados</div>
+        </div>
+        {ciclos.map((c, i) => {
+          const aprov = c.paineis.filter(p => p.resultado === "aprovado").length;
+          const reprov = c.paineis.filter(p => p.resultado === "reprovado").length;
+          const repro = c.paineis.filter(p => p.reprocesso).length;
+          return (
+            <div key={c.id} style={{ padding: "16px 20px", borderBottom: i < ciclos.length - 1 ? `1px solid ${COLORS.gray}` : "none", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                  <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 14 }}>{c.id}</span>
+                  {c.fimDeSemana && <span className="tag" style={{ background: COLORS.purpleLight, color: COLORS.purple, fontSize: 10 }}>Fim de semana</span>}
+                  <span className="tag" style={{ background: c.avaliado ? COLORS.successLight : COLORS.warningLight, color: c.avaliado ? COLORS.success : COLORS.warning, fontSize: 10 }}>
+                    {c.avaliado ? "✓ Avaliado" : "⏳ Aguardando"}
+                  </span>
+                </div>
+                <div style={{ fontSize: 12, color: COLORS.grayDark }}>Enviado: {c.dataEnvio} → Retorno: {c.dataRetorno} • #{c.matricula}</div>
+              </div>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{c.paineis.length} painéis</span>
+                {repro > 0 && <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning }}>↺ {repro}</span>}
+                {c.avaliado && <>
+                  <span className="tag" style={{ background: COLORS.successLight, color: COLORS.success }}>✓ {aprov}</span>
+                  <span className="tag" style={{ background: COLORS.dangerLight, color: COLORS.danger }}>✗ {reprov}</span>
+                </>}
+                {!c.avaliado && (
+                  <button onClick={() => { setCicloAvaliando(c.id); setAbaAutoclave("avaliar"); }}
+                    style={{ padding: "6px 12px", background: COLORS.blue, color: "white", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'" }}>
+                    Avaliar
+                  </button>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+function AutoclaveAvaliar({ ciclos, setCiclos, cicloAvaliando, setCicloAvaliando, setAbaAutoclave, COLORS }) {
+  const ciclosPendentes = ciclos.filter(c => !c.avaliado);
+  const cicloAtual = cicloAvaliando ? ciclos.find(c => c.id === cicloAvaliando) : null;
+
+  const marcarResultado = (cicloId, codigoPainel, resultado, defeito) => {
+    setCiclos(ciclos.map(c => {
+      if (c.id !== cicloId) return c;
+      return { ...c, paineis: c.paineis.map(p => p.codigo === codigoPainel ? { ...p, resultado, defeito } : p) };
+    }));
+  };
+
+  const finalizarAvaliacao = (cicloId) => {
+    setCiclos(ciclos.map(c => c.id === cicloId ? { ...c, avaliado: true } : c));
+    setCicloAvaliando(null);
+    setAbaAutoclave("dashboard");
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {!cicloAtual ? (
+        ciclosPendentes.length === 0 ? (
+          <div className="card" style={{ textAlign: "center", padding: 40, color: COLORS.grayDark }}>
+            <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Todos os ciclos já foram avaliados!</div>
+          </div>
+        ) : (
+          <div className="card">
+            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Ciclos Aguardando Avaliação</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {ciclosPendentes.map(c => (
+                <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.gray, borderRadius: 12, padding: "14px 16px", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 15, marginBottom: 4 }}>{c.id}</div>
+                    <div style={{ fontSize: 12, color: COLORS.grayDark }}>Enviado: {c.dataEnvio} • {c.paineis.length} painéis • #{c.matricula}</div>
+                  </div>
+                  <button onClick={() => setCicloAvaliando(c.id)}
+                    style={{ padding: "8px 16px", background: COLORS.blue, color: "white", border: "none", borderRadius: 8, fontFamily: "'DM Sans'", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                    Avaliar este ciclo
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )
+      ) : (
+        <div className="card">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
+            <div>
+              <div style={{ fontSize: 13, color: COLORS.grayDark, marginBottom: 2 }}>Avaliando ciclo</div>
+              <div style={{ fontFamily: "'DM Mono'", fontSize: 22, fontWeight: 700, color: COLORS.blue }}>{cicloAtual.id} — {cicloAtual.dataEnvio}</div>
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{cicloAtual.paineis.length} painéis</span>
+              <span className="tag" style={{ background: COLORS.successLight, color: COLORS.success }}>✓ {cicloAtual.paineis.filter(p => p.resultado === "aprovado").length}</span>
+              <span className="tag" style={{ background: COLORS.dangerLight, color: COLORS.danger }}>✗ {cicloAtual.paineis.filter(p => p.resultado === "reprovado").length}</span>
+            </div>
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+            {cicloAtual.paineis.map((p, i) => (
+              <div key={i} style={{ background: p.resultado === "aprovado" ? COLORS.successLight : p.resultado === "reprovado" ? COLORS.dangerLight : COLORS.gray, borderRadius: 12, padding: "12px 16px", border: `1.5px solid ${p.resultado === "aprovado" ? COLORS.success : p.resultado === "reprovado" ? COLORS.danger : COLORS.grayMid}` }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 15 }}>{p.codigo}</span>
+                    {p.reprocesso && <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning, fontSize: 10 }}>↺ Reprocesso</span>}
+                  </div>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "aprovado", null)}
+                      style={{ padding: "6px 12px", border: `1.5px solid ${COLORS.success}`, background: p.resultado === "aprovado" ? COLORS.success : "white", color: p.resultado === "aprovado" ? "white" : COLORS.success, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                      ✓ Bom
+                    </button>
+                    <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "reprovado", "dobras")}
+                      style={{ padding: "6px 10px", border: `1.5px solid ${COLORS.danger}`, background: p.resultado === "reprovado" && p.defeito === "dobras" ? COLORS.danger : "white", color: p.resultado === "reprovado" && p.defeito === "dobras" ? "white" : COLORS.danger, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                      Dobras
+                    </button>
+                    <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "reprovado", "mole")}
+                      style={{ padding: "6px 10px", border: `1.5px solid ${COLORS.warning}`, background: p.resultado === "reprovado" && p.defeito === "mole" ? COLORS.warning : "white", color: p.resultado === "reprovado" && p.defeito === "mole" ? "white" : COLORS.warning, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                      Mole
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 10 }}>
+            <button onClick={() => setCicloAvaliando(null)}
+              style={{ flex: 1, padding: "12px", border: `1.5px solid ${COLORS.grayMid}`, background: "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: COLORS.grayDark }}>
+              Voltar
+            </button>
+            <button onClick={() => finalizarAvaliacao(cicloAtual.id)}
+              style={{ flex: 2, padding: "12px", background: COLORS.success, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+              ✓ Finalizar Avaliação
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AGPHoraHora() {
   const [tela, setTela] = useState("dashboard");
   const [abaReg, setAbaReg] = useState("hora");
@@ -736,100 +922,7 @@ export default function AGPHoraHora() {
             </div>
 
             {/* VISÃO GERAL */}
-            {abaAutoclave === "dashboard" && (() => {
-              const totalPaineis = ciclos.reduce((s, c) => s + c.paineis.length, 0);
-              const totalAvaliados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.length, 0);
-              const totalAprovados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.filter(p => p.resultado === "aprovado").length, 0);
-              const totalReprovados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.filter(p => p.resultado === "reprovado").length, 0);
-              const totalReprocesso = ciclos.reduce((s, c) => s + c.paineis.filter(p => p.reprocesso).length, 0);
-              const taxaAuto = totalAvaliados > 0 ? Math.round((totalAprovados / totalAvaliados) * 100) : 0;
-
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {/* Cards */}
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-                    {[
-                      { label: "Total Ciclos", valor: ciclos.length, cor: COLORS.blue },
-                      { label: "Painéis Enviados", valor: totalPaineis, cor: "#4A7FA5" },
-                      { label: "Reprocessos", valor: totalReprocesso, cor: COLORS.warning },
-                      { label: "Avaliados", valor: totalAvaliados, cor: COLORS.grayDark },
-                      { label: "Aprovados", valor: totalAprovados, cor: COLORS.success },
-                      { label: "Reprovados", valor: totalReprovados, cor: COLORS.danger },
-                    ].map(({ label, valor, cor }) => (
-                      <div key={label} className="card" style={{ textAlign: "center", padding: "14px 8px", borderTop: `3px solid ${cor}` }}>
-                        <div style={{ fontSize: 24, fontWeight: 700, color: cor }}>{valor}</div>
-                        <div style={{ fontSize: 11, color: COLORS.grayDark, marginTop: 4, fontWeight: 500 }}>{label}</div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Taxa de aprovação */}
-                  <div className="card" style={{ display: "flex", alignItems: "center", gap: 20 }}>
-                    <div style={{ position: "relative", width: 90, height: 90, flexShrink: 0 }}>
-                      <svg viewBox="0 0 90 90" width="90" height="90">
-                        <circle cx="45" cy="45" r="38" fill="none" stroke={COLORS.dangerLight} strokeWidth="10" />
-                        <circle cx="45" cy="45" r="38" fill="none" stroke={COLORS.success} strokeWidth="10"
-                          strokeDasharray={`${2 * Math.PI * 38 * taxaAuto / 100} ${2 * Math.PI * 38}`}
-                          strokeLinecap="round" transform="rotate(-90 45 45)" />
-                      </svg>
-                      <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
-                        <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.success }}>{taxaAuto}%</div>
-                      </div>
-                    </div>
-                    <div>
-                      <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação Geral</div>
-                      <div style={{ fontSize: 13, color: COLORS.grayDark }}>Baseado em {ciclos.filter(c => c.avaliado).length} ciclo(s) avaliado(s)</div>
-                      <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-                        <span style={{ fontSize: 13, color: COLORS.success, fontWeight: 600 }}>✓ {totalAprovados} aprovados</span>
-                        <span style={{ fontSize: 13, color: COLORS.danger, fontWeight: 600 }}>✗ {totalReprovados} reprovados</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Lista de ciclos */}
-                  <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-                    <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.gray}` }}>
-                      <div style={{ fontSize: 15, fontWeight: 700 }}>Ciclos Registrados</div>
-                    </div>
-                    {ciclos.map((c, i) => {
-                      const aprov = c.paineis.filter(p => p.resultado === "aprovado").length;
-                      const reprov = c.paineis.filter(p => p.resultado === "reprovado").length;
-                      const repro = c.paineis.filter(p => p.reprocesso).length;
-                      return (
-                        <div key={c.id} style={{ padding: "16px 20px", borderBottom: i < ciclos.length - 1 ? `1px solid ${COLORS.gray}` : "none", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                          <div>
-                            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                              <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 14 }}>{c.id}</span>
-                              {c.fimDeSemana && <span className="tag" style={{ background: COLORS.purpleLight || "#F3E8FF", color: COLORS.purple, fontSize: 10 }}>Fim de semana</span>}
-                              <span className="tag" style={{ background: c.avaliado ? COLORS.successLight : COLORS.warningLight, color: c.avaliado ? COLORS.success : COLORS.warning, fontSize: 10 }}>
-                                {c.avaliado ? "✓ Avaliado" : "⏳ Aguardando"}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: 12, color: COLORS.grayDark }}>
-                              Enviado: {c.dataEnvio} → Retorno: {c.dataRetorno} • #{c.matricula}
-                            </div>
-                          </div>
-                          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                            <span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{c.paineis.length} painéis</span>
-                            {repro > 0 && <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning }}>↺ {repro} reprocesso</span>}
-                            {c.avaliado && <>
-                              <span className="tag" style={{ background: COLORS.successLight, color: COLORS.success }}>✓ {aprov}</span>
-                              <span className="tag" style={{ background: COLORS.dangerLight, color: COLORS.danger }}>✗ {reprov}</span>
-                            </>}
-                            {!c.avaliado && (
-                              <button onClick={() => { setCicloAvaliando(c.id); setAbaAutoclave("avaliar"); }}
-                                style={{ padding: "6px 12px", background: COLORS.blue, color: "white", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'" }}>
-                                Avaliar
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })()}
+            {abaAutoclave === "dashboard" && <AutoclaveVisaoGeral ciclos={ciclos} setCicloAvaliando={setCicloAvaliando} setAbaAutoclave={setAbaAutoclave} COLORS={COLORS} />}
 
             {/* NOVO CICLO */}
             {abaAutoclave === "novo" && (
@@ -943,108 +1036,11 @@ export default function AGPHoraHora() {
             )}
 
             {/* AVALIAR RETORNO */}
-            {abaAutoclave === "avaliar" && (() => {
-              const ciclosPendentes = ciclos.filter(c => !c.avaliado);
-              const cicloAtual = cicloAvaliando ? ciclos.find(c => c.id === cicloAvaliando) : null;
-
-              const marcarResultado = (cicloId, codigoPainel, resultado, defeito) => {
-                setCiclos(ciclos.map(c => {
-                  if (c.id !== cicloId) return c;
-                  return { ...c, paineis: c.paineis.map(p => p.codigo === codigoPainel ? { ...p, resultado, defeito } : p) };
-                }));
-              };
-
-              const finalizarAvaliacao = (cicloId) => {
-                setCiclos(ciclos.map(c => c.id === cicloId ? { ...c, avaliado: true } : c));
-                setCicloAvaliando(null);
-                setAbaAutoclave("dashboard");
-              };
-
-              return (
-                <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  {!cicloAtual ? (
-                    <>
-                      {ciclosPendentes.length === 0 ? (
-                        <div className="card" style={{ textAlign: "center", padding: 40, color: COLORS.grayDark }}>
-                          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-                          <div style={{ fontSize: 15, fontWeight: 600 }}>Todos os ciclos já foram avaliados!</div>
-                        </div>
-                      ) : (
-                        <div className="card">
-                          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Ciclos Aguardando Avaliação</div>
-                          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                            {ciclosPendentes.map(c => (
-                              <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.gray, borderRadius: 12, padding: "14px 16px", flexWrap: "wrap", gap: 8 }}>
-                                <div>
-                                  <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 15, marginBottom: 4 }}>{c.id}</div>
-                                  <div style={{ fontSize: 12, color: COLORS.grayDark }}>Enviado: {c.dataEnvio} • {c.paineis.length} painéis • #{c.matricula}</div>
-                                </div>
-                                <button onClick={() => setCicloAvaliando(c.id)}
-                                  style={{ padding: "8px 16px", background: COLORS.blue, color: "white", border: "none", borderRadius: 8, fontFamily: "'DM Sans'", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-                                  Avaliar este ciclo
-                                </button>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </>
-                  ) : (
-                    <div className="card">
-                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
-                        <div>
-                          <div style={{ fontSize: 13, color: COLORS.grayDark, marginBottom: 2 }}>Avaliando ciclo</div>
-                          <div style={{ fontFamily: "'DM Mono'", fontSize: 22, fontWeight: 700, color: COLORS.blue }}>{cicloAtual.id} — {cicloAtual.dataEnvio}</div>
-                        </div>
-                        <div style={{ display: "flex", gap: 8 }}>
-                          <span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{cicloAtual.paineis.length} painéis</span>
-                          <span className="tag" style={{ background: COLORS.successLight, color: COLORS.success }}>✓ {cicloAtual.paineis.filter(p => p.resultado === "aprovado").length}</span>
-                          <span className="tag" style={{ background: COLORS.dangerLight, color: COLORS.danger }}>✗ {cicloAtual.paineis.filter(p => p.resultado === "reprovado").length}</span>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-                        {cicloAtual.paineis.map((p, i) => (
-                          <div key={i} style={{ background: p.resultado === "aprovado" ? COLORS.successLight : p.resultado === "reprovado" ? COLORS.dangerLight : COLORS.gray, borderRadius: 12, padding: "12px 16px", border: `1.5px solid ${p.resultado === "aprovado" ? COLORS.success : p.resultado === "reprovado" ? COLORS.danger : COLORS.grayMid}` }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                                <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 15 }}>{p.codigo}</span>
-                                {p.reprocesso && <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning, fontSize: 10 }}>↺ Reprocesso</span>}
-                              </div>
-                              <div style={{ display: "flex", gap: 6 }}>
-                                <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "aprovado", null)}
-                                  style={{ padding: "6px 12px", border: `1.5px solid ${COLORS.success}`, background: p.resultado === "aprovado" ? COLORS.success : "white", color: p.resultado === "aprovado" ? "white" : COLORS.success, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                                  ✓ Bom
-                                </button>
-                                <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "reprovado", "dobras")}
-                                  style={{ padding: "6px 10px", border: `1.5px solid ${COLORS.danger}`, background: p.resultado === "reprovado" && p.defeito === "dobras" ? COLORS.danger : "white", color: p.resultado === "reprovado" && p.defeito === "dobras" ? "white" : COLORS.danger, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                                  Dobras
-                                </button>
-                                <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "reprovado", "mole")}
-                                  style={{ padding: "6px 10px", border: `1.5px solid ${COLORS.warning}`, background: p.resultado === "reprovado" && p.defeito === "mole" ? COLORS.warning : "white", color: p.resultado === "reprovado" && p.defeito === "mole" ? "white" : COLORS.warning, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                                  Mole
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-
-                      <div style={{ display: "flex", gap: 10 }}>
-                        <button onClick={() => setCicloAvaliando(null)}
-                          style={{ flex: 1, padding: "12px", border: `1.5px solid ${COLORS.grayMid}`, background: "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: COLORS.grayDark }}>
-                          Voltar
-                        </button>
-                        <button onClick={() => finalizarAvaliacao(cicloAtual.id)}
-                          style={{ flex: 2, padding: "12px", background: COLORS.success, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-                          ✓ Finalizar Avaliação
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
+            {abaAutoclave === "avaliar" && <AutoclaveAvaliar
+              ciclos={ciclos} setCiclos={setCiclos}
+              cicloAvaliando={cicloAvaliando} setCicloAvaliando={setCicloAvaliando}
+              setAbaAutoclave={setAbaAutoclave} COLORS={COLORS}
+            />}
 
           </div>
         )}
