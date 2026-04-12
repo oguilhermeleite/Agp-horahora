@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 
-const COLORS = {
+const C = {
   blue: "#003A8C", blueLight: "#0057D9", bluePale: "#E8F0FB",
   gray: "#F4F6FA", grayMid: "#C8D0DE", grayDark: "#6B7A99",
   success: "#0A7A4B", successLight: "#E6F4EF",
   danger: "#C0392B", dangerLight: "#FDECEA",
   warning: "#D97706", warningLight: "#FFF7ED",
   text: "#0D1B3E", purple: "#6B21A8", purpleLight: "#F3E8FF",
+  agpBlue: "#4A7FA5",
 };
 
 const INTERVALOS = [
@@ -17,50 +18,24 @@ const INTERVALOS = [
   "19h → 20h","20h → 21h","21h → 22h","22h → 23h",
 ];
 
-const dadosDia = [
-  { hora: "07-08h", aprovados: 5, reprovados: 1 },
-  { hora: "08-09h", aprovados: 0, reprovados: 0 },
-  { hora: "09-10h", aprovados: 6, reprovados: 2 },
-  { hora: "10-11h", aprovados: 9, reprovados: 1 },
-  { hora: "11-12h", aprovados: 5, reprovados: 2 },
-  { hora: "12-13h", aprovados: 4, reprovados: 1 },
-];
-const dadosSemana = [
-  { dia: "Seg", aprovados: 42, reprovados: 8 },
-  { dia: "Ter", aprovados: 38, reprovados: 12 },
-  { dia: "Qua", aprovados: 45, reprovados: 5 },
-  { dia: "Qui", aprovados: 30, reprovados: 20 },
-  { dia: "Sex", aprovados: 40, reprovados: 10 },
-];
-const dadosMes = [
-  { semana: "S1", aprovados: 180, reprovados: 40 },
-  { semana: "S2", aprovados: 195, reprovados: 25 },
-  { semana: "S3", aprovados: 160, reprovados: 55 },
-  { semana: "S4", aprovados: 210, reprovados: 20 },
-];
-
-const totais = { cortados: 52, embolsados: 45, autoclave: 45, aprovados: 37, reprovados: 8, amostras: 14 };
-const taxaAprovacao = Math.round((totais.aprovados / totais.autoclave) * 100);
-const taxaRejeicao = 100 - taxaAprovacao;
-
-const paineisMock = [
-  { codigo: "35002456", data: "10/04/2025", turno: "1º", intervalo: "07h → 08h", tipo: "novo", status: "aprovado", defeito: null, descricaoRetrabalho: null, amostras: 2, matricula: "3789" },
-  { codigo: "35002457", data: "10/04/2025", turno: "1º", intervalo: "09h → 10h", tipo: "novo", status: "reprovado", defeito: "dobras", descricaoRetrabalho: null, amostras: 0, matricula: "3789" },
-  { codigo: "35002457", data: "10/04/2025", turno: "2º", intervalo: "14h → 15h", tipo: "retrabalho", status: "aprovado", defeito: null, descricaoRetrabalho: "Painel apresentou dobras na região central, possivelmente por empilhamento excessivo antes do embolsamento.", amostras: 1, matricula: "3789", motivoRetrabalho: "dobras" },
-  { codigo: "35002458", data: "10/04/2025", turno: "1º", intervalo: "09h → 10h", tipo: "novo", status: "reprovado", defeito: "mole", descricaoRetrabalho: null, amostras: 0, matricula: "3789" },
-  { codigo: "35002459", data: "10/04/2025", turno: "1º", intervalo: "10h → 11h", tipo: "novo", status: "aprovado", defeito: null, descricaoRetrabalho: null, amostras: 3, matricula: "3789" },
-];
-
-const registrosHoraMock = [
+const MOCK_HORA = [
   { intervalo: "07h → 08h", turno: "1º", cortados: 8, embolsados: 6, autoclave: 6, aprovados: 5, reprovados: 1, amostras: 2, matricula: "3789", observacao: null, data: "10/04/2025" },
-  { intervalo: "08h → 09h", turno: "1º", cortados: 0, embolsados: 0, autoclave: 0, aprovados: 0, reprovados: 0, amostras: 0, matricula: "3789", observacao: "Reunião de alinhamento de produção com supervisor.", data: "10/04/2025" },
+  { intervalo: "08h → 09h", turno: "1º", cortados: 0, embolsados: 0, autoclave: 0, aprovados: 0, reprovados: 0, amostras: 0, matricula: "3789", observacao: "Reunião de turno com supervisor.", data: "10/04/2025" },
   { intervalo: "09h → 10h", turno: "1º", cortados: 10, embolsados: 9, autoclave: 9, aprovados: 8, reprovados: 1, amostras: 3, matricula: "3789", observacao: null, data: "10/04/2025" },
 ];
 
-const ciclosMock = [
+const MOCK_PAINEIS = [
+  { codigo: "35002456", data: "10/04/2025", turno: "1º", intervalo: "07h → 08h", tipo: "novo", status: "aprovado", defeito: null, descricaoRetrabalho: null, motivoRetrabalho: null, amostras: 2, matricula: "3789" },
+  { codigo: "35002457", data: "10/04/2025", turno: "1º", intervalo: "09h → 10h", tipo: "novo", status: "reprovado", defeito: "dobras", descricaoRetrabalho: null, motivoRetrabalho: null, amostras: 0, matricula: "3789" },
+  { codigo: "35002457", data: "10/04/2025", turno: "2º", intervalo: "14h → 15h", tipo: "retrabalho", status: "aprovado", defeito: null, descricaoRetrabalho: "Dobras na região central por empilhamento excessivo.", motivoRetrabalho: "dobras", amostras: 1, matricula: "3789" },
+  { codigo: "35002458", data: "10/04/2025", turno: "1º", intervalo: "09h → 10h", tipo: "novo", status: "reprovado", defeito: "mole", descricaoRetrabalho: null, motivoRetrabalho: null, amostras: 0, matricula: "3789" },
+  { codigo: "35002459", data: "10/04/2025", turno: "1º", intervalo: "10h → 11h", tipo: "novo", status: "aprovado", defeito: null, descricaoRetrabalho: null, motivoRetrabalho: null, amostras: 3, matricula: "3789" },
+];
+
+const MOCK_CICLOS = [
   {
     id: "C001", dataEnvio: "10/04/2025", dataRetorno: "11/04/2025",
-    matricula: "3789", fimDeSemana: false, observacao: null,
+    matricula: "3789", fimDeSemana: false, observacao: null, avaliado: true,
     paineis: [
       { codigo: "35002456", reprocesso: false, resultado: "aprovado", defeito: null },
       { codigo: "35002457", reprocesso: false, resultado: "reprovado", defeito: "dobras" },
@@ -68,100 +43,163 @@ const ciclosMock = [
       { codigo: "35002459", reprocesso: false, resultado: "aprovado", defeito: null },
       { codigo: "35002460", reprocesso: false, resultado: "reprovado", defeito: "mole" },
     ],
-    avaliado: true,
   },
   {
     id: "C002", dataEnvio: "11/04/2025", dataRetorno: "12/04/2025",
-    matricula: "3789", fimDeSemana: false, observacao: null,
+    matricula: "3789", fimDeSemana: false, observacao: null, avaliado: false,
     paineis: [
       { codigo: "35002461", reprocesso: false, resultado: null, defeito: null },
       { codigo: "35002462", reprocesso: false, resultado: null, defeito: null },
       { codigo: "35002463", reprocesso: true, resultado: null, defeito: null },
     ],
-    avaliado: false,
   },
 ];
 
-const FORM_CICLO_INICIAL = { matricula: "", dataEnvio: "", fimDeSemana: false, observacao: "", paineis: [] };
+const GRAFICO_DIA = [
+  { hora: "07-08h", aprovados: 5, reprovados: 1 },
+  { hora: "08-09h", aprovados: 0, reprovados: 0 },
+  { hora: "09-10h", aprovados: 6, reprovados: 2 },
+  { hora: "10-11h", aprovados: 9, reprovados: 1 },
+  { hora: "11-12h", aprovados: 5, reprovados: 2 },
+  { hora: "12-13h", aprovados: 4, reprovados: 1 },
+];
+const GRAFICO_SEMANA = [
+  { dia: "Seg", aprovados: 42, reprovados: 8 },
+  { dia: "Ter", aprovados: 38, reprovados: 12 },
+  { dia: "Qua", aprovados: 45, reprovados: 5 },
+  { dia: "Qui", aprovados: 30, reprovados: 20 },
+  { dia: "Sex", aprovados: 40, reprovados: 10 },
+];
+const GRAFICO_MES = [
+  { semana: "S1", aprovados: 180, reprovados: 40 },
+  { semana: "S2", aprovados: 195, reprovados: 25 },
+  { semana: "S3", aprovados: 160, reprovados: 55 },
+  { semana: "S4", aprovados: 210, reprovados: 20 },
+];
 
-const FORM_HORA_INICIAL = { matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", reprovados_dobras: "", reprovados_mole: "", amostras: "", observacao: "" };
-const FORM_PAINEL_INICIAL = { matricula: "", turno: "1º", codigo: "", tipo: "novo", intervalo: "07h → 08h", reprovados_dobras: "", reprovados_mole: "", amostras: "", motivoRetrabalho: "", descricaoRetrabalho: "" };
+const TOTAIS = { cortados: 52, embolsados: 45, autoclave: 45, aprovados: 37, reprovados: 8, amostras: 14 };
+const TAXA = Math.round((TOTAIS.aprovados / TOTAIS.autoclave) * 100);
 
-function AutoclaveVisaoGeral({ ciclos, setCicloAvaliando, setAbaAutoclave, COLORS }) {
-  const totalPaineis = ciclos.reduce((s, c) => s + c.paineis.length, 0);
-  const totalAvaliados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.length, 0);
-  const totalAprovados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.filter(p => p.resultado === "aprovado").length, 0);
-  const totalReprovados = ciclos.filter(c => c.avaliado).reduce((s, c) => s + c.paineis.filter(p => p.resultado === "reprovado").length, 0);
-  const totalReprocesso = ciclos.reduce((s, c) => s + c.paineis.filter(p => p.reprocesso).length, 0);
-  const taxaAuto = totalAvaliados > 0 ? Math.round((totalAprovados / totalAvaliados) * 100) : 0;
+const css = `
+  @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  .card { background: white; border-radius: 16px; padding: 20px; box-shadow: 0 1px 4px rgba(0,58,140,0.07); }
+  .field { width: 100%; padding: 10px 14px; border: 1.5px solid #C8D0DE; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; color: #0D1B3E; outline: none; background: white; }
+  .field:focus { border-color: #0057D9; }
+  .field-err { border-color: #C0392B !important; }
+  .btn { background: #003A8C; color: white; border: none; padding: 12px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; }
+  .tag { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .tab { background: none; border: none; cursor: pointer; padding: 11px 18px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; border-bottom: 2.5px solid transparent; color: #6B7A99; }
+  .tab.on { border-bottom-color: #003A8C; color: #003A8C; font-weight: 700; }
+  .pbtn { background: none; border: 1.5px solid #C8D0DE; cursor: pointer; padding: 7px 14px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: #6B7A99; }
+  .pbtn.on { background: #003A8C; border-color: #003A8C; color: white; }
+  .prow { padding: 12px 14px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border: 1.5px solid transparent; }
+  .prow:hover { background: #E8F0FB; border-color: #0057D9; }
+  .prow.sel { background: #E8F0FB; border-color: #003A8C; }
+  .tl { position: relative; padding-left: 24px; padding-bottom: 20px; }
+  .tl::before { content: ''; position: absolute; left: 7px; top: 20px; bottom: 0; width: 2px; background: #C8D0DE; }
+  .tl:last-child::before { display: none; }
+  .tldot { position: absolute; left: 0; top: 6px; width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid white; }
+  tr.cr:hover td { background: #E8F0FB !important; cursor: pointer; }
+  .lbl { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .tog { flex: 1; padding: 10px; border: 1.5px solid #C8D0DE; background: white; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; color: #6B7A99; }
+  .tog.novo { background: #E6F4EF; border-color: #0A7A4B; color: #0A7A4B; }
+  .tog.ret { background: #FFF7ED; border-color: #D97706; color: #D97706; }
+  .errmsg { font-size: 11px; color: #C0392B; margin-top: 4px; }
+  .snav { flex: 1; padding: 10px 6px; border: none; border-radius: 8px; cursor: pointer; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; }
+`;
+
+// ─── sub-components ───────────────────────────────────────────────
+
+function Tag({ bg, color, children }) {
+  return <span className="tag" style={{ background: bg, color }}>{children}</span>;
+}
+
+function Circulo({ valor, label, cor }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
-        {[
-          { label: "Total Ciclos", valor: ciclos.length, cor: COLORS.blue },
-          { label: "Painéis Enviados", valor: totalPaineis, cor: "#4A7FA5" },
-          { label: "Reprocessos", valor: totalReprocesso, cor: COLORS.warning },
-          { label: "Avaliados", valor: totalAvaliados, cor: COLORS.grayDark },
-          { label: "Aprovados", valor: totalAprovados, cor: COLORS.success },
-          { label: "Reprovados", valor: totalReprovados, cor: COLORS.danger },
-        ].map(({ label, valor, cor }) => (
-          <div key={label} className="card" style={{ textAlign: "center", padding: "14px 8px", borderTop: `3px solid ${cor}` }}>
-            <div style={{ fontSize: 24, fontWeight: 700, color: cor }}>{valor}</div>
-            <div style={{ fontSize: 11, color: COLORS.grayDark, marginTop: 4, fontWeight: 500 }}>{label}</div>
-          </div>
-        ))}
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <div style={{ width: 54, height: 54, borderRadius: "50%", background: cor + "18", border: `2.5px solid ${cor}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <span style={{ fontSize: 18, fontWeight: 700, color: cor }}>{valor}</span>
+      </div>
+      <span style={{ fontSize: 11, color: C.grayDark, fontWeight: 500 }}>{label}</span>
+    </div>
+  );
+}
+
+function CardNum({ label, valor, cor }) {
+  return (
+    <div className="card" style={{ textAlign: "center", padding: "14px 8px", borderTop: `3px solid ${cor}` }}>
+      <div style={{ fontSize: 26, fontWeight: 700, color: cor }}>{valor}</div>
+      <div style={{ fontSize: 11, color: C.grayDark, marginTop: 4, fontWeight: 500 }}>{label}</div>
+    </div>
+  );
+}
+
+function AutoclaveVisao({ ciclos, setCicloAvaliando, setAba }) {
+  const tot = ciclos.reduce((s, c) => s + c.paineis.length, 0);
+  const aval = ciclos.filter(c => c.avaliado);
+  const aprov = aval.reduce((s, c) => s + c.paineis.filter(p => p.resultado === "aprovado").length, 0);
+  const reprov = aval.reduce((s, c) => s + c.paineis.filter(p => p.resultado === "reprovado").length, 0);
+  const totAval = aval.reduce((s, c) => s + c.paineis.length, 0);
+  const repro = ciclos.reduce((s, c) => s + c.paineis.filter(p => p.reprocesso).length, 0);
+  const taxa = totAval > 0 ? Math.round((aprov / totAval) * 100) : 0;
+  const r = 38;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+        <CardNum label="Ciclos" valor={ciclos.length} cor={C.blue} />
+        <CardNum label="Enviados" valor={tot} cor={C.agpBlue} />
+        <CardNum label="Reprocessos" valor={repro} cor={C.warning} />
+        <CardNum label="Avaliados" valor={totAval} cor={C.grayDark} />
+        <CardNum label="Aprovados" valor={aprov} cor={C.success} />
+        <CardNum label="Reprovados" valor={reprov} cor={C.danger} />
       </div>
       <div className="card" style={{ display: "flex", alignItems: "center", gap: 20 }}>
         <div style={{ position: "relative", width: 90, height: 90, flexShrink: 0 }}>
           <svg viewBox="0 0 90 90" width="90" height="90">
-            <circle cx="45" cy="45" r="38" fill="none" stroke={COLORS.dangerLight} strokeWidth="10" />
-            <circle cx="45" cy="45" r="38" fill="none" stroke={COLORS.success} strokeWidth="10"
-              strokeDasharray={`${2 * Math.PI * 38 * taxaAuto / 100} ${2 * Math.PI * 38}`}
+            <circle cx="45" cy="45" r={r} fill="none" stroke={C.dangerLight} strokeWidth="10" />
+            <circle cx="45" cy="45" r={r} fill="none" stroke={C.success} strokeWidth="10"
+              strokeDasharray={`${2 * Math.PI * r * taxa / 100} ${2 * Math.PI * r}`}
               strokeLinecap="round" transform="rotate(-90 45 45)" />
           </svg>
           <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: COLORS.success }}>{taxaAuto}%</div>
+            <div style={{ fontSize: 18, fontWeight: 700, color: C.success }}>{taxa}%</div>
           </div>
         </div>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação Geral</div>
-          <div style={{ fontSize: 13, color: COLORS.grayDark }}>Baseado em {ciclos.filter(c => c.avaliado).length} ciclo(s) avaliado(s)</div>
-          <div style={{ display: "flex", gap: 12, marginTop: 8 }}>
-            <span style={{ fontSize: 13, color: COLORS.success, fontWeight: 600 }}>✓ {totalAprovados} aprovados</span>
-            <span style={{ fontSize: 13, color: COLORS.danger, fontWeight: 600 }}>✗ {totalReprovados} reprovados</span>
+          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação</div>
+          <div style={{ fontSize: 13, color: C.grayDark }}>{aval.length} ciclo(s) avaliado(s)</div>
+          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
+            <span style={{ fontSize: 13, color: C.success, fontWeight: 600 }}>✓ {aprov}</span>
+            <span style={{ fontSize: 13, color: C.danger, fontWeight: 600 }}>✗ {reprov}</span>
           </div>
         </div>
       </div>
       <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "16px 20px", borderBottom: `1px solid ${COLORS.gray}` }}>
-          <div style={{ fontSize: 15, fontWeight: 700 }}>Ciclos Registrados</div>
-        </div>
+        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.gray}`, fontSize: 15, fontWeight: 700 }}>Ciclos Registrados</div>
         {ciclos.map((c, i) => {
-          const aprov = c.paineis.filter(p => p.resultado === "aprovado").length;
-          const reprov = c.paineis.filter(p => p.resultado === "reprovado").length;
-          const repro = c.paineis.filter(p => p.reprocesso).length;
+          const ap = c.paineis.filter(p => p.resultado === "aprovado").length;
+          const rp = c.paineis.filter(p => p.resultado === "reprovado").length;
+          const re = c.paineis.filter(p => p.reprocesso).length;
           return (
-            <div key={c.id} style={{ padding: "16px 20px", borderBottom: i < ciclos.length - 1 ? `1px solid ${COLORS.gray}` : "none", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            <div key={c.id} style={{ padding: "14px 18px", borderBottom: i < ciclos.length - 1 ? `1px solid ${C.gray}` : "none", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
               <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-                  <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 14 }}>{c.id}</span>
-                  {c.fimDeSemana && <span className="tag" style={{ background: COLORS.purpleLight, color: COLORS.purple, fontSize: 10 }}>Fim de semana</span>}
-                  <span className="tag" style={{ background: c.avaliado ? COLORS.successLight : COLORS.warningLight, color: c.avaliado ? COLORS.success : COLORS.warning, fontSize: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                  <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: C.blue, fontSize: 14 }}>{c.id}</span>
+                  {c.fimDeSemana && <Tag bg={C.purpleLight} color={C.purple}>Fim de semana</Tag>}
+                  <Tag bg={c.avaliado ? C.successLight : C.warningLight} color={c.avaliado ? C.success : C.warning}>
                     {c.avaliado ? "✓ Avaliado" : "⏳ Aguardando"}
-                  </span>
+                  </Tag>
                 </div>
-                <div style={{ fontSize: 12, color: COLORS.grayDark }}>Enviado: {c.dataEnvio} → Retorno: {c.dataRetorno} • #{c.matricula}</div>
+                <div style={{ fontSize: 12, color: C.grayDark }}>Envio: {c.dataEnvio} → Retorno: {c.dataRetorno} • #{c.matricula}</div>
               </div>
-              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{c.paineis.length} painéis</span>
-                {repro > 0 && <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning }}>↺ {repro}</span>}
-                {c.avaliado && <>
-                  <span className="tag" style={{ background: COLORS.successLight, color: COLORS.success }}>✓ {aprov}</span>
-                  <span className="tag" style={{ background: COLORS.dangerLight, color: COLORS.danger }}>✗ {reprov}</span>
-                </>}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <Tag bg={C.bluePale} color={C.blue}>{c.paineis.length} painéis</Tag>
+                {re > 0 && <Tag bg={C.warningLight} color={C.warning}>↺ {re}</Tag>}
+                {c.avaliado && <><Tag bg={C.successLight} color={C.success}>✓ {ap}</Tag><Tag bg={C.dangerLight} color={C.danger}>✗ {rp}</Tag></>}
                 {!c.avaliado && (
-                  <button onClick={() => { setCicloAvaliando(c.id); setAbaAutoclave("avaliar"); }}
-                    style={{ padding: "6px 12px", background: COLORS.blue, color: "white", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'" }}>
+                  <button onClick={() => { setCicloAvaliando(c.id); setAba("avaliar"); }}
+                    style={{ padding: "6px 12px", background: C.blue, color: "white", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'" }}>
                     Avaliar
                   </button>
                 )}
@@ -174,243 +212,200 @@ function AutoclaveVisaoGeral({ ciclos, setCicloAvaliando, setAbaAutoclave, COLOR
   );
 }
 
-function AutoclaveAvaliar({ ciclos, setCiclos, cicloAvaliando, setCicloAvaliando, setAbaAutoclave, COLORS }) {
-  const ciclosPendentes = ciclos.filter(c => !c.avaliado);
-  const cicloAtual = cicloAvaliando ? ciclos.find(c => c.id === cicloAvaliando) : null;
+function AutoclaveAvaliar({ ciclos, setCiclos, cicloAvaliando, setCicloAvaliando, setAba }) {
+  const pendentes = ciclos.filter(c => !c.avaliado);
+  const atual = cicloAvaliando ? ciclos.find(c => c.id === cicloAvaliando) : null;
 
-  const marcarResultado = (cicloId, codigoPainel, resultado, defeito) => {
-    setCiclos(ciclos.map(c => {
-      if (c.id !== cicloId) return c;
-      return { ...c, paineis: c.paineis.map(p => p.codigo === codigoPainel ? { ...p, resultado, defeito } : p) };
+  function marcar(cicloId, codigo, resultado, defeito) {
+    setCiclos(prev => prev.map(c => c.id !== cicloId ? c : {
+      ...c, paineis: c.paineis.map(p => p.codigo === codigo ? { ...p, resultado, defeito } : p)
     }));
-  };
+  }
 
-  const finalizarAvaliacao = (cicloId) => {
-    setCiclos(ciclos.map(c => c.id === cicloId ? { ...c, avaliado: true } : c));
+  function finalizar(cicloId) {
+    setCiclos(prev => prev.map(c => c.id === cicloId ? { ...c, avaliado: true } : c));
     setCicloAvaliando(null);
-    setAbaAutoclave("dashboard");
-  };
+    setAba("dashboard");
+  }
+
+  if (!atual) {
+    if (pendentes.length === 0) {
+      return (
+        <div className="card" style={{ textAlign: "center", padding: 40, color: C.grayDark }}>
+          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
+          <div style={{ fontSize: 15, fontWeight: 600 }}>Todos os ciclos foram avaliados!</div>
+        </div>
+      );
+    }
+    return (
+      <div className="card">
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Ciclos Aguardando Avaliação</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {pendentes.map(c => (
+            <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.gray, borderRadius: 12, padding: "14px 16px", flexWrap: "wrap", gap: 8 }}>
+              <div>
+                <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: C.blue, fontSize: 15, marginBottom: 4 }}>{c.id}</div>
+                <div style={{ fontSize: 12, color: C.grayDark }}>Enviado: {c.dataEnvio} • {c.paineis.length} painéis • #{c.matricula}</div>
+              </div>
+              <button onClick={() => setCicloAvaliando(c.id)}
+                style={{ padding: "8px 16px", background: C.blue, color: "white", border: "none", borderRadius: 8, fontFamily: "'DM Sans'", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
+                Avaliar este ciclo
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {!cicloAtual ? (
-        ciclosPendentes.length === 0 ? (
-          <div className="card" style={{ textAlign: "center", padding: 40, color: COLORS.grayDark }}>
-            <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>Todos os ciclos já foram avaliados!</div>
-          </div>
-        ) : (
-          <div className="card">
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Ciclos Aguardando Avaliação</div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              {ciclosPendentes.map(c => (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.gray, borderRadius: 12, padding: "14px 16px", flexWrap: "wrap", gap: 8 }}>
-                  <div>
-                    <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 15, marginBottom: 4 }}>{c.id}</div>
-                    <div style={{ fontSize: 12, color: COLORS.grayDark }}>Enviado: {c.dataEnvio} • {c.paineis.length} painéis • #{c.matricula}</div>
-                  </div>
-                  <button onClick={() => setCicloAvaliando(c.id)}
-                    style={{ padding: "8px 16px", background: COLORS.blue, color: "white", border: "none", borderRadius: 8, fontFamily: "'DM Sans'", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-                    Avaliar este ciclo
+    <div className="card">
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
+        <div>
+          <div style={{ fontSize: 13, color: C.grayDark, marginBottom: 2 }}>Avaliando ciclo</div>
+          <div style={{ fontFamily: "'DM Mono'", fontSize: 20, fontWeight: 700, color: C.blue }}>{atual.id} — {atual.dataEnvio}</div>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Tag bg={C.bluePale} color={C.blue}>{atual.paineis.length} painéis</Tag>
+          <Tag bg={C.successLight} color={C.success}>✓ {atual.paineis.filter(p => p.resultado === "aprovado").length}</Tag>
+          <Tag bg={C.dangerLight} color={C.danger}>✗ {atual.paineis.filter(p => p.resultado === "reprovado").length}</Tag>
+        </div>
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
+        {atual.paineis.map((p, i) => {
+          const bgColor = p.resultado === "aprovado" ? C.successLight : p.resultado === "reprovado" ? C.dangerLight : C.gray;
+          const bdColor = p.resultado === "aprovado" ? C.success : p.resultado === "reprovado" ? C.danger : C.grayMid;
+          return (
+            <div key={i} style={{ background: bgColor, borderRadius: 12, padding: "12px 16px", border: `1.5px solid ${bdColor}` }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: C.blue, fontSize: 15 }}>{p.codigo}</span>
+                  {p.reprocesso && <Tag bg={C.warningLight} color={C.warning}>↺ Reprocesso</Tag>}
+                </div>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button onClick={() => marcar(atual.id, p.codigo, "aprovado", null)}
+                    style={{ padding: "6px 12px", border: `1.5px solid ${C.success}`, background: p.resultado === "aprovado" ? C.success : "white", color: p.resultado === "aprovado" ? "white" : C.success, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
+                    ✓ Bom
+                  </button>
+                  <button onClick={() => marcar(atual.id, p.codigo, "reprovado", "dobras")}
+                    style={{ padding: "6px 10px", border: `1.5px solid ${C.danger}`, background: p.resultado === "reprovado" && p.defeito === "dobras" ? C.danger : "white", color: p.resultado === "reprovado" && p.defeito === "dobras" ? "white" : C.danger, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                    Dobras
+                  </button>
+                  <button onClick={() => marcar(atual.id, p.codigo, "reprovado", "mole")}
+                    style={{ padding: "6px 10px", border: `1.5px solid ${C.warning}`, background: p.resultado === "reprovado" && p.defeito === "mole" ? C.warning : "white", color: p.resultado === "reprovado" && p.defeito === "mole" ? "white" : C.warning, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
+                    Mole
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
-        )
-      ) : (
-        <div className="card">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
-            <div>
-              <div style={{ fontSize: 13, color: COLORS.grayDark, marginBottom: 2 }}>Avaliando ciclo</div>
-              <div style={{ fontFamily: "'DM Mono'", fontSize: 22, fontWeight: 700, color: COLORS.blue }}>{cicloAtual.id} — {cicloAtual.dataEnvio}</div>
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{cicloAtual.paineis.length} painéis</span>
-              <span className="tag" style={{ background: COLORS.successLight, color: COLORS.success }}>✓ {cicloAtual.paineis.filter(p => p.resultado === "aprovado").length}</span>
-              <span className="tag" style={{ background: COLORS.dangerLight, color: COLORS.danger }}>✗ {cicloAtual.paineis.filter(p => p.resultado === "reprovado").length}</span>
-            </div>
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-            {cicloAtual.paineis.map((p, i) => (
-              <div key={i} style={{ background: p.resultado === "aprovado" ? COLORS.successLight : p.resultado === "reprovado" ? COLORS.dangerLight : COLORS.gray, borderRadius: 12, padding: "12px 16px", border: `1.5px solid ${p.resultado === "aprovado" ? COLORS.success : p.resultado === "reprovado" ? COLORS.danger : COLORS.grayMid}` }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: COLORS.blue, fontSize: 15 }}>{p.codigo}</span>
-                    {p.reprocesso && <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning, fontSize: 10 }}>↺ Reprocesso</span>}
-                  </div>
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "aprovado", null)}
-                      style={{ padding: "6px 12px", border: `1.5px solid ${COLORS.success}`, background: p.resultado === "aprovado" ? COLORS.success : "white", color: p.resultado === "aprovado" ? "white" : COLORS.success, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                      ✓ Bom
-                    </button>
-                    <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "reprovado", "dobras")}
-                      style={{ padding: "6px 10px", border: `1.5px solid ${COLORS.danger}`, background: p.resultado === "reprovado" && p.defeito === "dobras" ? COLORS.danger : "white", color: p.resultado === "reprovado" && p.defeito === "dobras" ? "white" : COLORS.danger, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                      Dobras
-                    </button>
-                    <button onClick={() => marcarResultado(cicloAtual.id, p.codigo, "reprovado", "mole")}
-                      style={{ padding: "6px 10px", border: `1.5px solid ${COLORS.warning}`, background: p.resultado === "reprovado" && p.defeito === "mole" ? COLORS.warning : "white", color: p.resultado === "reprovado" && p.defeito === "mole" ? "white" : COLORS.warning, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                      Mole
-                    </button>
-                  </div>
-                </div>
               </div>
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 10 }}>
-            <button onClick={() => setCicloAvaliando(null)}
-              style={{ flex: 1, padding: "12px", border: `1.5px solid ${COLORS.grayMid}`, background: "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: COLORS.grayDark }}>
-              Voltar
-            </button>
-            <button onClick={() => finalizarAvaliacao(cicloAtual.id)}
-              style={{ flex: 2, padding: "12px", background: COLORS.success, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-              ✓ Finalizar Avaliação
-            </button>
-          </div>
-        </div>
-      )}
+            </div>
+          );
+        })}
+      </div>
+      <div style={{ display: "flex", gap: 10 }}>
+        <button onClick={() => setCicloAvaliando(null)}
+          style={{ flex: 1, padding: "12px", border: `1.5px solid ${C.grayMid}`, background: "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: C.grayDark }}>
+          Voltar
+        </button>
+        <button onClick={() => finalizar(atual.id)}
+          style={{ flex: 2, padding: "12px", background: C.success, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
+          ✓ Finalizar Avaliação
+        </button>
+      </div>
     </div>
   );
 }
 
-export default function AGPHoraHora() {
+// ─── main ─────────────────────────────────────────────────────────
+
+export default function App() {
+  const hoje = new Date().toLocaleDateString("pt-BR");
   const [tela, setTela] = useState("dashboard");
   const [abaReg, setAbaReg] = useState("hora");
   const [abaHist, setAbaHist] = useState("hora");
+  const [abaAuto, setAbaAuto] = useState("dashboard");
   const [periodo, setPeriodo] = useState("dia");
-  const [painelSelecionado, setPainelSelecionado] = useState(null);
-  const [buscaCodigo, setBuscaCodigo] = useState("");
-  const [registrosPaineis, setRegistrosPaineis] = useState(paineisMock);
-  const [registrosHora, setRegistrosHora] = useState(registrosHoraMock);
-  const [sucesso, setSucesso] = useState(false);
-  const [errosHora, setErrosHora] = useState({});
-  const [errosPainel, setErrosPainel] = useState({});
-  const [ciclos, setCiclos] = useState(ciclosMock);
-  const [formCiclo, setFormCiclo] = useState(FORM_CICLO_INICIAL);
-  const [novoCodigo, setNovoCodigo] = useState("");
-  const [cicloAvaliando, setCicloAvaliando] = useState(null);
-  const [abaAutoclave, setAbaAutoclave] = useState("dashboard");
+  const [painelSel, setPainelSel] = useState(null);
+  const [busca, setBusca] = useState("");
+  const [paineis, setPaineis] = useState(MOCK_PAINEIS);
+  const [horas, setHoras] = useState(MOCK_HORA);
+  const [ciclos, setCiclos] = useState(MOCK_CICLOS);
+  const [cicloAval, setCicloAval] = useState(null);
+  const [novoCod, setNovoCod] = useState("");
+  const [ok, setOk] = useState(false);
 
-  const [formPainel, setFormPainel] = useState(FORM_PAINEL_INICIAL);
-  const hoje = new Date().toLocaleDateString("pt-BR");
+  const [fh, setFh] = useState({ matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", rep_dobras: "", rep_mole: "", amostras: "", obs: "" });
+  const [fp, setFp] = useState({ matricula: "", turno: "1º", codigo: "", tipo: "novo", intervalo: "07h → 08h", rep_dobras: "", rep_mole: "", amostras: "", motivo: "", descricao: "" });
+  const [fc, setFc] = useState({ matricula: "", dataEnvio: "", fimDeSemana: false, obs: "", paineis: [] });
+  const [ehFh, setEhFh] = useState({});
+  const [ehFp, setEhFp] = useState({});
 
-  const zeroProd = !formHora.cortados && !formHora.embolsados && !formHora.autoclave && !formHora.aprovados;
+  const zeroProd = !fh.cortados && !fh.embolsados && !fh.autoclave && !fh.aprovados;
 
-  const validarHora = () => {
+  function flash() { setOk(true); setTimeout(() => setOk(false), 3000); }
+
+  function salvarHora() {
     const e = {};
-    if (!formHora.matricula) e.matricula = "Informe a matrícula";
-    if (zeroProd && !formHora.observacao) e.observacao = "Produção zerada — informe o motivo";
-    setErrosHora(e);
-    return Object.keys(e).length === 0;
-  };
+    if (!fh.matricula) e.matricula = "Informe a matrícula";
+    if (zeroProd && !fh.obs) e.obs = "Produção zerada — informe o motivo";
+    setEhFh(e);
+    if (Object.keys(e).length) return;
+    const rep = (Number(fh.rep_dobras) || 0) + (Number(fh.rep_mole) || 0);
+    setHoras(prev => [...prev, { intervalo: fh.intervalo, turno: fh.turno, cortados: Number(fh.cortados) || 0, embolsados: Number(fh.embolsados) || 0, autoclave: Number(fh.autoclave) || 0, aprovados: Number(fh.aprovados) || 0, reprovados: rep, amostras: Number(fh.amostras) || 0, matricula: fh.matricula, observacao: fh.obs || null, data: hoje }]);
+    setFh({ matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", rep_dobras: "", rep_mole: "", amostras: "", obs: "" });
+    setEhFh({});
+    flash();
+  }
 
-  const validarPainel = () => {
+  function salvarPainel() {
     const e = {};
-    if (!formPainel.matricula) e.matricula = "Informe a matrícula";
-    if (!/^\d{8}$/.test(formPainel.codigo)) e.codigo = "Código deve ter exatamente 8 números";
-    setErrosPainel(e);
-    return Object.keys(e).length === 0;
-  };
+    if (!fp.matricula) e.matricula = "Informe a matrícula";
+    if (!/^\d{8}$/.test(fp.codigo)) e.codigo = "Código deve ter exatamente 8 números";
+    setEhFp(e);
+    if (Object.keys(e).length) return;
+    const rd = Number(fp.rep_dobras) || 0;
+    const rm = Number(fp.rep_mole) || 0;
+    const status = (rd + rm) > 0 ? "reprovado" : "aprovado";
+    const defeito = rd > 0 && rm > 0 ? "dobras e mole" : rd > 0 ? "dobras" : rm > 0 ? "mole" : null;
+    setPaineis(prev => [...prev, { codigo: fp.codigo, data: hoje, turno: fp.turno, intervalo: fp.intervalo, tipo: fp.tipo, status, defeito, descricaoRetrabalho: fp.tipo === "retrabalho" ? fp.descricao : null, motivoRetrabalho: fp.tipo === "retrabalho" ? fp.motivo : null, amostras: Number(fp.amostras) || 0, matricula: fp.matricula }]);
+    setFp({ matricula: "", turno: "1º", codigo: "", tipo: "novo", intervalo: "07h → 08h", rep_dobras: "", rep_mole: "", amostras: "", motivo: "", descricao: "" });
+    setEhFp({});
+    flash();
+  }
 
-  const handleRegistroHora = () => {
-    if (!validarHora()) return;
-    const reprovados = (Number(formHora.reprovados_dobras) || 0) + (Number(formHora.reprovados_mole) || 0);
-    setRegistrosHora([...registrosHora, {
-      intervalo: formHora.intervalo, turno: formHora.turno,
-      cortados: Number(formHora.cortados) || 0,
-      embolsados: Number(formHora.embolsados) || 0,
-      autoclave: Number(formHora.autoclave) || 0,
-      aprovados: Number(formHora.aprovados) || 0,
-      reprovados, amostras: Number(formHora.amostras) || 0,
-      matricula: formHora.matricula,
-      observacao: formHora.observacao || null,
-      data: hoje,
-    }]);
-    setFormHora(FORM_HORA_INICIAL);
-    setErrosHora({});
-    setSucesso("hora");
-    setTimeout(() => setSucesso(false), 3000);
-  };
+  function salvarCiclo() {
+    if (!fc.matricula || fc.paineis.length === 0) return;
+    const id = `C${String(ciclos.length + 1).padStart(3, "0")}`;
+    const de = fc.dataEnvio ? new Date(fc.dataEnvio).toLocaleDateString("pt-BR") : hoje;
+    const dr = fc.dataEnvio ? new Date(new Date(fc.dataEnvio).getTime() + 86400000).toLocaleDateString("pt-BR") : hoje;
+    setCiclos(prev => [...prev, { id, dataEnvio: de, dataRetorno: dr, matricula: fc.matricula, fimDeSemana: fc.fimDeSemana, observacao: fc.obs || null, avaliado: false, paineis: fc.paineis }]);
+    setFc({ matricula: "", dataEnvio: "", fimDeSemana: false, obs: "", paineis: [] });
+    setAbaAuto("dashboard");
+  }
 
-  const handleRegistroPainel = () => {
-    if (!validarPainel()) return;
-    const reprovados_d = Number(formPainel.reprovados_dobras) || 0;
-    const reprovados_m = Number(formPainel.reprovados_mole) || 0;
-    const reprovados = reprovados_d + reprovados_m;
-    const status = reprovados > 0 ? "reprovado" : "aprovado";
-    const defeito = reprovados_d > 0 && reprovados_m > 0 ? "dobras e mole" : reprovados_d > 0 ? "dobras" : reprovados_m > 0 ? "mole" : null;
-    setRegistrosPaineis([...registrosPaineis, {
-      codigo: formPainel.codigo, data: hoje,
-      turno: formPainel.turno, intervalo: formPainel.intervalo,
-      tipo: formPainel.tipo, status, defeito,
-      descricaoRetrabalho: formPainel.tipo === "retrabalho" ? formPainel.descricaoRetrabalho : null,
-      motivoRetrabalho: formPainel.tipo === "retrabalho" ? formPainel.motivoRetrabalho : null,
-      amostras: Number(formPainel.amostras) || 0,
-      matricula: formPainel.matricula,
-    }]);
-    setFormPainel(FORM_PAINEL_INICIAL);
-    setErrosPainel({});
-    setSucesso("painel");
-    setTimeout(() => setSucesso(false), 3000);
-  };
-
-  const codigosUnicos = [...new Set(registrosPaineis.map(r => r.codigo))];
-  const codigosFiltrados = codigosUnicos.filter(c => c.includes(buscaCodigo));
-  const historicoDoPanel = painelSelecionado ? registrosPaineis.filter(r => r.codigo === painelSelecionado) : [];
-  const dadosGrafico = periodo === "dia" ? dadosDia : periodo === "semana" ? dadosSemana : dadosMes;
+  const codsUnicos = [...new Set(paineis.map(p => p.codigo))];
+  const codsFiltrados = codsUnicos.filter(c => c.includes(busca));
+  const histPainel = painelSel ? paineis.filter(p => p.codigo === painelSel) : [];
+  const grafico = periodo === "dia" ? GRAFICO_DIA : periodo === "semana" ? GRAFICO_SEMANA : GRAFICO_MES;
   const xKey = periodo === "dia" ? "hora" : periodo === "semana" ? "dia" : "semana";
 
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", background: COLORS.gray, minHeight: "100vh", color: COLORS.text, overflowX: "hidden", maxWidth: "100vw" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        .card { background: white; border-radius: 16px; padding: 24px; box-shadow: 0 1px 4px rgba(0,58,140,0.07); }
-        .nav-btn { background: none; border: none; cursor: pointer; padding: 10px 16px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; }
-        .input-field { width: 100%; padding: 10px 14px; border: 1.5px solid ${COLORS.grayMid}; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; color: ${COLORS.text}; outline: none; background: white; transition: border 0.2s; }
-        .input-field:focus { border-color: ${COLORS.blueLight}; }
-        .input-error { border-color: ${COLORS.danger} !important; }
-        .btn-primary { background: ${COLORS.blue}; color: white; border: none; padding: 12px; border-radius: 10px; font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600; cursor: pointer; width: 100%; }
-        .btn-primary:hover { background: ${COLORS.blueLight}; }
-        .periodo-btn { background: none; border: 1.5px solid ${COLORS.grayMid}; cursor: pointer; padding: 7px 16px; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 13px; font-weight: 500; color: ${COLORS.grayDark}; }
-        .periodo-btn.active { background: ${COLORS.blue}; border-color: ${COLORS.blue}; color: white; }
-        .tag { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 12px; font-weight: 600; }
-        .toggle-btn { flex: 1; padding: 10px; border: 1.5px solid ${COLORS.grayMid}; background: white; border-radius: 8px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; cursor: pointer; color: ${COLORS.grayDark}; }
-        .toggle-btn.active-novo { background: ${COLORS.successLight}; border-color: ${COLORS.success}; color: ${COLORS.success}; }
-        .toggle-btn.active-retrabalho { background: ${COLORS.warningLight}; border-color: ${COLORS.warning}; color: ${COLORS.warning}; }
-        .erro-msg { font-size: 11px; color: ${COLORS.danger}; margin-top: 4px; }
-        .tab-btn { background: none; border: none; cursor: pointer; padding: 12px 20px; font-family: 'DM Sans', sans-serif; font-size: 14px; font-weight: 500; border-bottom: 2.5px solid transparent; color: ${COLORS.grayDark}; }
-        .tab-btn.active { border-bottom-color: ${COLORS.blue}; color: ${COLORS.blue}; font-weight: 600; }
-        .painel-row { padding: 12px 16px; border-radius: 10px; cursor: pointer; display: flex; align-items: center; justify-content: space-between; border: 1.5px solid transparent; transition: all 0.15s; }
-        .painel-row:hover { background: ${COLORS.bluePale}; border-color: ${COLORS.blueLight}; }
-        .painel-row.selected { background: ${COLORS.bluePale}; border-color: ${COLORS.blue}; }
-        .timeline-item { position: relative; padding-left: 24px; padding-bottom: 20px; }
-        .timeline-item::before { content: ''; position: absolute; left: 7px; top: 20px; bottom: 0; width: 2px; background: ${COLORS.grayMid}; }
-        .timeline-item:last-child::before { display: none; }
-        .timeline-dot { position: absolute; left: 0; top: 6px; width: 16px; height: 16px; border-radius: 50%; border: 2.5px solid white; }
-        .section-label { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
-        tr.clickable:hover td { background: ${COLORS.bluePale} !important; cursor: pointer; }
-      `}</style>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", background: C.gray, minHeight: "100vh", color: C.text, overflowX: "hidden", maxWidth: "100vw" }}>
+      <style>{css}</style>
 
-      {/* Header */}
-      <div style={{ background: COLORS.blue, overflowX: "hidden" }}>
-        {/* Top bar */}
+      {/* HEADER */}
+      <div style={{ background: C.blue, overflowX: "hidden" }}>
         <div style={{ maxWidth: 1200, margin: "0 auto", display: "flex", alignItems: "center", padding: "10px 16px", gap: 14 }}>
-          {/* AGP sGlass real logo */}
-          <div style={{ flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <img src="https://agpglass.com/wp-content/themes/agp/assets/images/logo_sglass_2026_white.png" alt="AGP sGlass" style={{ height: 40, width: "auto" }} />
-          </div>
+          <img src="https://agpglass.com/wp-content/themes/agp/assets/images/logo_sglass_2026_white.png" alt="AGP" style={{ height: 38, width: "auto", flexShrink: 0 }} />
           <div>
-            <div style={{ color: "white", fontWeight: 700, fontSize: 15, lineHeight: 1.2 }}>HoraHora Opaco</div>
+            <div style={{ color: "white", fontWeight: 700, fontSize: 15 }}>HoraHora Opaco</div>
             <div style={{ color: "rgba(255,255,255,0.6)", fontSize: 11 }}>Controle de Produção — Mantas de Aramida</div>
           </div>
         </div>
-        {/* Nav tabs */}
-        <div style={{ display: "flex", background: "rgba(0,0,0,0.15)", borderTop: "1px solid rgba(255,255,255,0.1)" }}>
-          {[["dashboard","📊 Dashboard"],["registro","✏️ Registrar"],["historico","📋 Histórico"],["paineis","🔲 Painéis"],["autoclave","🔥 Autoclave"]].map(([k,v]) => (
+        <div style={{ display: "flex", background: "rgba(0,0,0,0.15)", borderTop: "1px solid rgba(255,255,255,0.1)", overflowX: "auto" }}>
+          {[["dashboard","📊"],["registro","✏️"],["historico","📋"],["paineis","🔲"],["autoclave","🔥"]].map(([k, ic]) => (
             <button key={k} onClick={() => setTela(k)}
-              style={{ flex: 1, background: "none", border: "none", borderBottom: tela === k ? "3px solid white" : "3px solid transparent", cursor: "pointer", padding: "10px 4px", fontFamily: "'DM Sans'", fontSize: 12, fontWeight: tela === k ? 700 : 500, color: tela === k ? "white" : "rgba(255,255,255,0.6)", whiteSpace: "nowrap" }}>
-              {v}
+              style={{ flex: 1, background: "none", border: "none", borderBottom: tela === k ? "3px solid white" : "3px solid transparent", cursor: "pointer", padding: "10px 4px", fontFamily: "'DM Sans'", fontSize: 11, fontWeight: tela === k ? 700 : 500, color: tela === k ? "white" : "rgba(255,255,255,0.6)", whiteSpace: "nowrap" }}>
+              {ic} {k.charAt(0).toUpperCase() + k.slice(1)}
             </button>
           ))}
         </div>
@@ -418,270 +413,205 @@ export default function AGPHoraHora() {
 
       <div style={{ maxWidth: 1200, margin: "0 auto", padding: "20px 12px", width: "100%", boxSizing: "border-box" }}>
 
-        {/* DASHBOARD */}
+        {/* ── DASHBOARD ── */}
         {tela === "dashboard" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8 }}>
-              {[
-                { label: "Cortados", valor: totais.cortados, cor: COLORS.blue },
-                { label: "Embolsados", valor: totais.embolsados, cor: COLORS.blueLight },
-                { label: "Autoclave", valor: totais.autoclave, cor: COLORS.warning },
-                { label: "Aprovados", valor: totais.aprovados, cor: COLORS.success },
-                { label: "Reprovados", valor: totais.reprovados, cor: COLORS.danger },
-                { label: "Amostras", valor: totais.amostras, cor: COLORS.purple },
-              ].map(({ label, valor, cor }) => (
-                <div key={label} className="card" style={{ textAlign: "center", padding: "18px 12px", borderTop: `3px solid ${cor}` }}>
-                  <div style={{ fontSize: 28, fontWeight: 700, color: cor }}>{valor}</div>
-                  <div style={{ fontSize: 12, color: COLORS.grayDark, marginTop: 4, fontWeight: 500 }}>{label}</div>
-                </div>
-              ))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
+              <CardNum label="Cortados" valor={TOTAIS.cortados} cor={C.blue} />
+              <CardNum label="Embolsados" valor={TOTAIS.embolsados} cor={C.agpBlue} />
+              <CardNum label="Autoclave" valor={TOTAIS.autoclave} cor={C.warning} />
+              <CardNum label="Aprovados" valor={TOTAIS.aprovados} cor={C.success} />
+              <CardNum label="Reprovados" valor={TOTAIS.reprovados} cor={C.danger} />
+              <CardNum label="Amostras" valor={TOTAIS.amostras} cor={C.purple} />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 16 }}>
-              <div className="card" style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", gap: 12 }}>
-                <div style={{ fontSize: 13, color: COLORS.grayDark, fontWeight: 500 }}>Taxa de Aprovação — Autoclave</div>
-                <div style={{ position: "relative", width: 120, height: 120 }}>
-                  <svg viewBox="0 0 120 120" width="120" height="120">
-                    <circle cx="60" cy="60" r="50" fill="none" stroke={COLORS.dangerLight} strokeWidth="12" />
-                    <circle cx="60" cy="60" r="50" fill="none" stroke={COLORS.success} strokeWidth="12"
-                      strokeDasharray={`${2 * Math.PI * 50 * taxaAprovacao / 100} ${2 * Math.PI * 50}`}
-                      strokeLinecap="round" transform="rotate(-90 60 60)" />
-                  </svg>
-                  <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
-                    <div style={{ fontSize: 24, fontWeight: 700, color: COLORS.success }}>{taxaAprovacao}%</div>
-                    <div style={{ fontSize: 10, color: COLORS.grayDark }}>aprovação</div>
-                  </div>
-                </div>
-                <div style={{ display: "flex", gap: 16 }}>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.success }}>{totais.aprovados}</div>
-                    <div style={{ fontSize: 11, color: COLORS.grayDark }}>bons</div>
-                  </div>
-                  <div style={{ textAlign: "center" }}>
-                    <div style={{ fontSize: 13, fontWeight: 700, color: COLORS.danger }}>{totais.reprovados}</div>
-                    <div style={{ fontSize: 11, color: COLORS.grayDark }}>ruins</div>
-                  </div>
+            <div className="card" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+              <div style={{ fontSize: 13, color: C.grayDark, fontWeight: 500 }}>Taxa de Aprovação — Autoclave</div>
+              <div style={{ position: "relative", width: 110, height: 110 }}>
+                <svg viewBox="0 0 110 110" width="110" height="110">
+                  <circle cx="55" cy="55" r="46" fill="none" stroke={C.dangerLight} strokeWidth="12" />
+                  <circle cx="55" cy="55" r="46" fill="none" stroke={C.success} strokeWidth="12"
+                    strokeDasharray={`${2 * Math.PI * 46 * TAXA / 100} ${2 * Math.PI * 46}`}
+                    strokeLinecap="round" transform="rotate(-90 55 55)" />
+                </svg>
+                <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
+                  <div style={{ fontSize: 22, fontWeight: 700, color: C.success }}>{TAXA}%</div>
+                  <div style={{ fontSize: 10, color: C.grayDark }}>aprovação</div>
                 </div>
               </div>
+              <div style={{ display: "flex", gap: 20 }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.success }}>{TOTAIS.aprovados} bons</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: C.danger }}>{TOTAIS.reprovados} ruins</span>
+              </div>
+            </div>
 
-              <div className="card">
-                <div style={{ fontSize: 13, fontWeight: 600, color: COLORS.grayDark, marginBottom: 20 }}>Fluxo de Produção — Turno Atual</div>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 8 }}>
-                  {[
-                    { label: "Corte", valor: totais.cortados, cor: COLORS.blue },
-                    { seta: true },
-                    { label: "Embolsa", valor: totais.embolsados, cor: COLORS.blueLight },
-                    { seta: true },
-                    { label: "Autoclave", valor: totais.autoclave, cor: COLORS.warning },
-                    { seta: true },
-                    { label: "Aprovados", valor: totais.aprovados, cor: COLORS.success },
-                    { seta: true },
-                    { label: "Amostras", valor: totais.amostras, cor: COLORS.purple },
-                  ].map((item, i) => item.seta ? (
-                    <div key={i} style={{ color: COLORS.grayMid, fontSize: 20 }}>→</div>
-                  ) : (
-                    <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                      <div style={{ width: 56, height: 56, borderRadius: "50%", background: item.cor + "18", border: `2.5px solid ${item.cor}`, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <span style={{ fontSize: 20, fontWeight: 700, color: item.cor }}>{item.valor}</span>
-                      </div>
-                      <span style={{ fontSize: 11, color: COLORS.grayDark, fontWeight: 500 }}>{item.label}</span>
-                    </div>
-                  ))}
-                </div>
-                <div style={{ marginTop: 20, padding: "10px 16px", background: COLORS.dangerLight, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 13, color: COLORS.danger, fontWeight: 500 }}>⚠ Reprovados: {totais.reprovados} painéis ({taxaRejeicao}% de rejeição)</span>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <span className="tag" style={{ background: COLORS.dangerLight, color: COLORS.danger }}>Dobras: {Math.ceil(totais.reprovados * 0.6)}</span>
-                    <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning }}>Mole: {Math.floor(totais.reprovados * 0.4)}</span>
-                  </div>
+            <div className="card">
+              <div style={{ fontSize: 13, fontWeight: 600, color: C.grayDark, marginBottom: 16 }}>Fluxo de Produção — Turno Atual</div>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 8 }}>
+                <Circulo valor={TOTAIS.cortados} label="Corte" cor={C.blue} />
+                <span style={{ color: C.grayMid, fontSize: 18 }}>→</span>
+                <Circulo valor={TOTAIS.embolsados} label="Embolsa" cor={C.agpBlue} />
+                <span style={{ color: C.grayMid, fontSize: 18 }}>→</span>
+                <Circulo valor={TOTAIS.autoclave} label="Autoclave" cor={C.warning} />
+                <span style={{ color: C.grayMid, fontSize: 18 }}>→</span>
+                <Circulo valor={TOTAIS.aprovados} label="Aprovados" cor={C.success} />
+                <span style={{ color: C.grayMid, fontSize: 18 }}>→</span>
+                <Circulo valor={TOTAIS.amostras} label="Amostras" cor={C.purple} />
+              </div>
+              <div style={{ marginTop: 16, padding: "10px 14px", background: C.dangerLight, borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+                <span style={{ fontSize: 13, color: C.danger, fontWeight: 500 }}>⚠ {TOTAIS.reprovados} reprovados ({100 - TAXA}% rejeição)</span>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <Tag bg={C.dangerLight} color={C.danger}>Dobras: {Math.ceil(TOTAIS.reprovados * 0.6)}</Tag>
+                  <Tag bg={C.warningLight} color={C.warning}>Mole: {Math.floor(TOTAIS.reprovados * 0.4)}</Tag>
                 </div>
               </div>
             </div>
 
             <div className="card">
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
                 <div style={{ fontSize: 15, fontWeight: 600 }}>Produção por período</div>
                 <div style={{ display: "flex", gap: 6 }}>
                   {[["dia","Dia"],["semana","Semana"],["mes","Mês"]].map(([k,v]) => (
-                    <button key={k} className={`periodo-btn ${periodo === k ? "active" : ""}`} onClick={() => setPeriodo(k)}>{v}</button>
+                    <button key={k} className={`pbtn ${periodo === k ? "on" : ""}`} onClick={() => setPeriodo(k)}>{v}</button>
                   ))}
                 </div>
               </div>
               <ResponsiveContainer width="100%" height={240}>
-                <BarChart data={dadosGrafico} barGap={4} margin={{ bottom: 30 }}>
-                  <XAxis dataKey={xKey} tick={{ fontSize: 10, fill: COLORS.grayDark, angle: -35, textAnchor: "end", dy: 8 }} axisLine={false} tickLine={false} interval={0} />
-                  <YAxis tick={{ fontSize: 12, fill: COLORS.grayDark }} axisLine={false} tickLine={false} />
+                <BarChart data={grafico} barGap={4} margin={{ bottom: 30 }}>
+                  <XAxis dataKey={xKey} tick={{ fontSize: 10, fill: C.grayDark, angle: -35, textAnchor: "end", dy: 8 }} axisLine={false} tickLine={false} interval={0} />
+                  <YAxis tick={{ fontSize: 12, fill: C.grayDark }} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)", fontFamily: "'DM Sans'" }} />
-                  <Bar dataKey="aprovados" name="Aprovados" fill="#4A7FA5" radius={[6,6,0,0]} />
-                  <Bar dataKey="reprovados" name="Reprovados" fill={COLORS.danger} radius={[6,6,0,0]} />
+                  <Bar dataKey="aprovados" name="Aprovados" fill={C.agpBlue} radius={[6,6,0,0]} />
+                  <Bar dataKey="reprovados" name="Reprovados" fill={C.danger} radius={[6,6,0,0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
           </div>
         )}
 
-        {/* REGISTRO */}
+        {/* ── REGISTRAR ── */}
         {tela === "registro" && (
           <div style={{ maxWidth: 600, margin: "0 auto" }}>
             <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-              <div style={{ display: "flex", borderBottom: `1px solid ${COLORS.gray}`, padding: "0 24px" }}>
-                <button className={`tab-btn ${abaReg === "hora" ? "active" : ""}`} onClick={() => setAbaReg("hora")}>📋 Registro por Hora</button>
-                <button className={`tab-btn ${abaReg === "painel" ? "active" : ""}`} onClick={() => setAbaReg("painel")}>🔲 Registro de Painel</button>
+              <div style={{ display: "flex", borderBottom: `1px solid ${C.gray}`, padding: "0 20px" }}>
+                <button className={`tab ${abaReg === "hora" ? "on" : ""}`} onClick={() => setAbaReg("hora")}>📋 Por Hora</button>
+                <button className={`tab ${abaReg === "painel" ? "on" : ""}`} onClick={() => setAbaReg("painel")}>🔲 Por Painel</button>
               </div>
+              <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 14 }}>
+                {ok && <div style={{ background: C.successLight, border: `1.5px solid ${C.success}`, borderRadius: 10, padding: "12px 16px", color: C.success, fontWeight: 500, fontSize: 14 }}>✓ Salvo com sucesso!</div>}
 
-              <div style={{ padding: 24 }}>
-                {sucesso && (
-                  <div style={{ background: COLORS.successLight, border: `1.5px solid ${COLORS.success}`, borderRadius: 10, padding: "12px 16px", marginBottom: 20, color: COLORS.success, fontWeight: 500, fontSize: 14 }}>
-                    ✓ Registro salvo com sucesso!
-                  </div>
-                )}
-
-                {/* HORA */}
                 {abaReg === "hora" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-                    {/* Matrícula + Turno */}
+                  <>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Matrícula do Operador</label>
-                        <input className={`input-field ${errosHora.matricula ? "input-error" : ""}`} placeholder="Ex: 3789"
-                          value={formHora.matricula} onChange={e => setFormHora({ ...formHora, matricula: e.target.value.replace(/\D/g, "") })}
+                        <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Matrícula</label>
+                        <input className={`field ${ehFh.matricula ? "field-err" : ""}`} placeholder="Ex: 3789"
+                          value={fh.matricula} onChange={e => setFh(p => ({ ...p, matricula: e.target.value.replace(/\D/g, "") }))}
                           style={{ fontFamily: "'DM Mono'", fontWeight: 600, letterSpacing: 2 }} />
-                        {errosHora.matricula && <div className="erro-msg">{errosHora.matricula}</div>}
+                        {ehFh.matricula && <div className="errmsg">{ehFh.matricula}</div>}
                       </div>
                       <div>
-                        <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Turno</label>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Turno</label>
                         <div style={{ display: "flex", gap: 8 }}>
-                          {[["1º","1º"],["2º","2º"]].map(([v,l]) => (
-                            <button key={v} onClick={() => setFormHora({ ...formHora, turno: v })}
-                              style={{ flex: 1, padding: "10px", border: `1.5px solid ${formHora.turno === v ? COLORS.blue : COLORS.grayMid}`, background: formHora.turno === v ? COLORS.bluePale : "white", borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: formHora.turno === v ? COLORS.blue : COLORS.grayDark }}>
-                              {l}
+                          {["1º","2º"].map(t => (
+                            <button key={t} onClick={() => setFh(p => ({ ...p, turno: t }))}
+                              style={{ flex: 1, padding: "10px", border: `1.5px solid ${fh.turno === t ? C.blue : C.grayMid}`, background: fh.turno === t ? C.bluePale : "white", borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: fh.turno === t ? C.blue : C.grayDark }}>
+                              {t}
                             </button>
                           ))}
                         </div>
                       </div>
                     </div>
-
-                    {/* Intervalo */}
                     <div>
-                      <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Intervalo de Hora</label>
-                      <select className="input-field" value={formHora.intervalo} onChange={e => setFormHora({ ...formHora, intervalo: e.target.value })}
-                        style={{ fontFamily: "'DM Mono'", fontWeight: 600 }}>
+                      <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Intervalo</label>
+                      <select className="field" value={fh.intervalo} onChange={e => setFh(p => ({ ...p, intervalo: e.target.value }))} style={{ fontFamily: "'DM Mono'", fontWeight: 600 }}>
                         {INTERVALOS.map(i => <option key={i} value={i}>{i}</option>)}
                       </select>
                     </div>
-
-                    {/* Produção */}
-                    <div style={{ borderTop: `1px solid ${COLORS.gray}`, paddingTop: 16 }}>
-                      <div className="section-label" style={{ color: COLORS.blue }}>Produção</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                        {[["cortados","Painéis Cortados"],["embolsados","Painéis Embolsados"],["autoclave","Enviados Autoclave"],["aprovados","Aprovados"],["amostras","Amostras Cortadas"]].map(([k,label]) => (
+                    <div style={{ borderTop: `1px solid ${C.gray}`, paddingTop: 14 }}>
+                      <div className="lbl" style={{ color: C.blue }}>Produção</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                        {[["cortados","Cortados"],["embolsados","Embolsados"],["autoclave","Autoclave"],["aprovados","Aprovados"],["amostras","Amostras"]].map(([k,l]) => (
                           <div key={k}>
-                            <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>{label}</label>
-                            <input className="input-field" type="number" min="0" placeholder="0"
-                              value={formHora[k]} onChange={e => setFormHora({ ...formHora, [k]: e.target.value })} />
+                            <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 5 }}>{l}</label>
+                            <input className="field" type="number" min="0" placeholder="0" value={fh[k]} onChange={e => setFh(p => ({ ...p, [k]: e.target.value }))} />
                           </div>
                         ))}
                       </div>
                     </div>
-
-                    {/* Reprovados */}
-                    <div style={{ borderTop: `1px solid ${COLORS.gray}`, paddingTop: 16 }}>
-                      <div className="section-label" style={{ color: COLORS.danger }}>Reprovados</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <div style={{ borderTop: `1px solid ${C.gray}`, paddingTop: 14 }}>
+                      <div className="lbl" style={{ color: C.danger }}>Reprovados</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                         <div>
-                          <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Defeito — Dobras</label>
-                          <input className="input-field" type="number" min="0" placeholder="0"
-                            value={formHora.reprovados_dobras} onChange={e => setFormHora({ ...formHora, reprovados_dobras: e.target.value })} />
+                          <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 5 }}>Dobras</label>
+                          <input className="field" type="number" min="0" placeholder="0" value={fh.rep_dobras} onChange={e => setFh(p => ({ ...p, rep_dobras: e.target.value }))} />
                         </div>
                         <div>
-                          <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Defeito — Mole</label>
-                          <input className="input-field" type="number" min="0" placeholder="0"
-                            value={formHora.reprovados_mole} onChange={e => setFormHora({ ...formHora, reprovados_mole: e.target.value })} />
+                          <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 5 }}>Mole</label>
+                          <input className="field" type="number" min="0" placeholder="0" value={fh.rep_mole} onChange={e => setFh(p => ({ ...p, rep_mole: e.target.value }))} />
                         </div>
                       </div>
                     </div>
-
-                    {/* Observação */}
                     <div>
-                      <label style={{ fontSize: 13, fontWeight: 500, color: zeroProd ? COLORS.danger : COLORS.grayDark, display: "block", marginBottom: 6 }}>
+                      <label style={{ fontSize: 13, fontWeight: 500, color: zeroProd ? C.danger : C.grayDark, display: "block", marginBottom: 6 }}>
                         {zeroProd ? "⚠ Motivo da parada (obrigatório)" : "Observação (opcional)"}
                       </label>
-                      <textarea className={`input-field ${errosHora.observacao ? "input-error" : ""}`} rows={3}
-                        placeholder={zeroProd ? "Ex: Reunião de turno, manutenção preventiva, aguardando material..." : "Ex: Início de turno com ritmo reduzido..."}
-                        value={formHora.observacao} onChange={e => setFormHora({ ...formHora, observacao: e.target.value })}
-                        style={{ resize: "vertical" }} />
-                      {errosHora.observacao && <div className="erro-msg">{errosHora.observacao}</div>}
+                      <textarea className={`field ${ehFh.obs ? "field-err" : ""}`} rows={3} placeholder={zeroProd ? "Ex: Reunião, manutenção..." : "Ex: Ritmo reduzido no início..."} value={fh.obs} onChange={e => setFh(p => ({ ...p, obs: e.target.value }))} style={{ resize: "vertical" }} />
+                      {ehFh.obs && <div className="errmsg">{ehFh.obs}</div>}
                     </div>
-
-                    <div style={{ background: COLORS.gray, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: COLORS.grayDark }}>
-                      📅 Data: <strong style={{ color: COLORS.text }}>{hoje}</strong>
-                    </div>
-
-                    <button className="btn-primary" onClick={handleRegistroHora}>Confirmar Registro</button>
-                  </div>
+                    <div style={{ background: C.gray, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.grayDark }}>📅 Data: <strong style={{ color: C.text }}>{hoje}</strong></div>
+                    <button className="btn" onClick={salvarHora}>Confirmar Registro</button>
+                  </>
                 )}
 
-                {/* PAINEL */}
                 {abaReg === "painel" && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-                    {/* Matrícula + Turno */}
+                  <>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                       <div>
-                        <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Matrícula do Operador</label>
-                        <input className={`input-field ${errosPainel.matricula ? "input-error" : ""}`} placeholder="Ex: 3789"
-                          value={formPainel.matricula} onChange={e => setFormPainel({ ...formPainel, matricula: e.target.value.replace(/\D/g, "") })}
+                        <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Matrícula</label>
+                        <input className={`field ${ehFp.matricula ? "field-err" : ""}`} placeholder="Ex: 3789"
+                          value={fp.matricula} onChange={e => setFp(p => ({ ...p, matricula: e.target.value.replace(/\D/g, "") }))}
                           style={{ fontFamily: "'DM Mono'", fontWeight: 600, letterSpacing: 2 }} />
-                        {errosPainel.matricula && <div className="erro-msg">{errosPainel.matricula}</div>}
+                        {ehFp.matricula && <div className="errmsg">{ehFp.matricula}</div>}
                       </div>
                       <div>
-                        <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Turno</label>
+                        <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Turno</label>
                         <div style={{ display: "flex", gap: 8 }}>
-                          {[["1º","1º"],["2º","2º"]].map(([v,l]) => (
-                            <button key={v} onClick={() => setFormPainel({ ...formPainel, turno: v })}
-                              style={{ flex: 1, padding: "10px", border: `1.5px solid ${formPainel.turno === v ? COLORS.blue : COLORS.grayMid}`, background: formPainel.turno === v ? COLORS.bluePale : "white", borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: formPainel.turno === v ? COLORS.blue : COLORS.grayDark }}>
-                              {l}
+                          {["1º","2º"].map(t => (
+                            <button key={t} onClick={() => setFp(p => ({ ...p, turno: t }))}
+                              style={{ flex: 1, padding: "10px", border: `1.5px solid ${fp.turno === t ? C.blue : C.grayMid}`, background: fp.turno === t ? C.bluePale : "white", borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: fp.turno === t ? C.blue : C.grayDark }}>
+                              {t}
                             </button>
                           ))}
                         </div>
                       </div>
                     </div>
-
-                    {/* Código */}
                     <div>
-                      <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Código do Painel</label>
-                      <input className={`input-field ${errosPainel.codigo ? "input-error" : ""}`} placeholder="Ex: 35002456" maxLength={8}
-                        value={formPainel.codigo} onChange={e => setFormPainel({ ...formPainel, codigo: e.target.value.replace(/\D/g, "") })}
+                      <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Código do Painel</label>
+                      <input className={`field ${ehFp.codigo ? "field-err" : ""}`} placeholder="Ex: 35002456" maxLength={8}
+                        value={fp.codigo} onChange={e => setFp(p => ({ ...p, codigo: e.target.value.replace(/\D/g, "") }))}
                         style={{ fontFamily: "'DM Mono'", fontSize: 18, fontWeight: 600, letterSpacing: 3 }} />
-                      {errosPainel.codigo && <div className="erro-msg">{errosPainel.codigo}</div>}
-                      <div style={{ fontSize: 11, color: COLORS.grayDark, marginTop: 4 }}>{formPainel.codigo.length}/8 dígitos</div>
+                      {ehFp.codigo && <div className="errmsg">{ehFp.codigo}</div>}
+                      <div style={{ fontSize: 11, color: C.grayDark, marginTop: 4 }}>{fp.codigo.length}/8 dígitos</div>
                     </div>
-
-                    {/* Intervalo */}
                     <div>
-                      <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Intervalo de Hora</label>
-                      <select className="input-field" value={formPainel.intervalo} onChange={e => setFormPainel({ ...formPainel, intervalo: e.target.value })}
-                        style={{ fontFamily: "'DM Mono'", fontWeight: 600 }}>
+                      <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Intervalo</label>
+                      <select className="field" value={fp.intervalo} onChange={e => setFp(p => ({ ...p, intervalo: e.target.value }))} style={{ fontFamily: "'DM Mono'", fontWeight: 600 }}>
                         {INTERVALOS.map(i => <option key={i} value={i}>{i}</option>)}
                       </select>
                     </div>
-
-                    {/* Tipo */}
                     <div>
-                      <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 8 }}>Tipo de Painel</label>
+                      <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 8 }}>Tipo</label>
                       <div style={{ display: "flex", gap: 8 }}>
-                        <button className={`toggle-btn ${formPainel.tipo === "novo" ? "active-novo" : ""}`} onClick={() => setFormPainel({ ...formPainel, tipo: "novo" })}>✦ Painel Novo</button>
-                        <button className={`toggle-btn ${formPainel.tipo === "retrabalho" ? "active-retrabalho" : ""}`} onClick={() => setFormPainel({ ...formPainel, tipo: "retrabalho" })}>↺ Retrabalho</button>
+                        <button className={`tog ${fp.tipo === "novo" ? "novo" : ""}`} onClick={() => setFp(p => ({ ...p, tipo: "novo" }))}>✦ Novo</button>
+                        <button className={`tog ${fp.tipo === "retrabalho" ? "ret" : ""}`} onClick={() => setFp(p => ({ ...p, tipo: "retrabalho" }))}>↺ Retrabalho</button>
                       </div>
                     </div>
-
-                    {/* Retrabalho */}
-                    {formPainel.tipo === "retrabalho" && (
-                      <div style={{ background: COLORS.warningLight, borderRadius: 10, padding: 14, border: `1.5px solid ${COLORS.warning}`, display: "flex", flexDirection: "column", gap: 12 }}>
+                    {fp.tipo === "retrabalho" && (
+                      <div style={{ background: C.warningLight, borderRadius: 10, padding: 14, border: `1.5px solid ${C.warning}`, display: "flex", flexDirection: "column", gap: 10 }}>
                         <div>
-                          <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.warning, display: "block", marginBottom: 6 }}>Tipo do defeito anterior</label>
-                          <select className="input-field" value={formPainel.motivoRetrabalho} onChange={e => setFormPainel({ ...formPainel, motivoRetrabalho: e.target.value })}>
+                          <label style={{ fontSize: 13, fontWeight: 500, color: C.warning, display: "block", marginBottom: 6 }}>Tipo do defeito anterior</label>
+                          <select className="field" value={fp.motivo} onChange={e => setFp(p => ({ ...p, motivo: e.target.value }))}>
                             <option value="">Selecione</option>
                             <option value="dobras">Dobras</option>
                             <option value="mole">Painel Mole</option>
@@ -689,76 +619,62 @@ export default function AGPHoraHora() {
                           </select>
                         </div>
                         <div>
-                          <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.warning, display: "block", marginBottom: 6 }}>Descrição do problema</label>
-                          <textarea className="input-field" rows={3}
-                            placeholder="Descreva o que aconteceu com esse painel e o que foi feito no retrabalho..."
-                            value={formPainel.descricaoRetrabalho} onChange={e => setFormPainel({ ...formPainel, descricaoRetrabalho: e.target.value })}
-                            style={{ resize: "vertical" }} />
+                          <label style={{ fontSize: 13, fontWeight: 500, color: C.warning, display: "block", marginBottom: 6 }}>Descrição do problema</label>
+                          <textarea className="field" rows={3} placeholder="Descreva o que aconteceu..." value={fp.descricao} onChange={e => setFp(p => ({ ...p, descricao: e.target.value }))} style={{ resize: "vertical" }} />
                         </div>
                       </div>
                     )}
-
-                    {/* Resultado */}
-                    <div style={{ borderTop: `1px solid ${COLORS.gray}`, paddingTop: 16 }}>
-                      <div className="section-label" style={{ color: COLORS.danger }}>Resultado</div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                        {[["reprovados_dobras","Reprovado — Dobras"],["reprovados_mole","Reprovado — Mole"],["amostras","Amostras Cortadas"]].map(([k,label]) => (
+                    <div style={{ borderTop: `1px solid ${C.gray}`, paddingTop: 14 }}>
+                      <div className="lbl" style={{ color: C.danger }}>Resultado</div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+                        {[["rep_dobras","Dobras"],["rep_mole","Mole"],["amostras","Amostras"]].map(([k,l]) => (
                           <div key={k}>
-                            <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>{label}</label>
-                            <input className="input-field" type="number" min="0" placeholder="0"
-                              value={formPainel[k]} onChange={e => setFormPainel({ ...formPainel, [k]: e.target.value })} />
+                            <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 5 }}>{l}</label>
+                            <input className="field" type="number" min="0" placeholder="0" value={fp[k]} onChange={e => setFp(p => ({ ...p, [k]: e.target.value }))} />
                           </div>
                         ))}
                       </div>
                     </div>
-
-                    <div style={{ background: COLORS.gray, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: COLORS.grayDark }}>
-                      📅 Data: <strong style={{ color: COLORS.text }}>{hoje}</strong>
-                    </div>
-
-                    <button className="btn-primary" onClick={handleRegistroPainel}>Confirmar Registro</button>
-                  </div>
+                    <div style={{ background: C.gray, borderRadius: 10, padding: "10px 14px", fontSize: 13, color: C.grayDark }}>📅 Data: <strong style={{ color: C.text }}>{hoje}</strong></div>
+                    <button className="btn" onClick={salvarPainel}>Confirmar Registro</button>
+                  </>
                 )}
               </div>
             </div>
           </div>
         )}
 
-        {/* HISTÓRICO */}
+        {/* ── HISTÓRICO ── */}
         {tela === "historico" && (
           <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-            <div style={{ display: "flex", borderBottom: `1px solid ${COLORS.gray}`, padding: "0 24px" }}>
-              <button className={`tab-btn ${abaHist === "hora" ? "active" : ""}`} onClick={() => setAbaHist("hora")}>📋 Por Hora</button>
-              <button className={`tab-btn ${abaHist === "painel" ? "active" : ""}`} onClick={() => setAbaHist("painel")}>🔲 Por Painel</button>
+            <div style={{ display: "flex", borderBottom: `1px solid ${C.gray}`, padding: "0 20px" }}>
+              <button className={`tab ${abaHist === "hora" ? "on" : ""}`} onClick={() => setAbaHist("hora")}>📋 Por Hora</button>
+              <button className={`tab ${abaHist === "painel" ? "on" : ""}`} onClick={() => setAbaHist("painel")}>🔲 Por Painel</button>
             </div>
-            <div style={{ padding: 24, overflowX: "auto" }}>
+            <div style={{ padding: 20, overflowX: "auto" }}>
               {abaHist === "hora" && (
                 <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                   <thead>
-                    <tr style={{ borderBottom: `2px solid ${COLORS.gray}` }}>
-                      {["Intervalo","Data","Turno","Matrícula","Cortados","Embolsados","Autoclave","Aprovados","Reprovados","Amostras","Observação"].map(h => (
-                        <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: COLORS.grayDark, fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap" }}>{h}</th>
+                    <tr style={{ borderBottom: `2px solid ${C.gray}` }}>
+                      {["Intervalo","Data","Turno","Matrícula","Cortados","Embolsados","Autoclave","Aprovados","Reprov.","Amostras","Observação"].map(h => (
+                        <th key={h} style={{ padding: "10px 10px", textAlign: "left", color: C.grayDark, fontWeight: 600, fontSize: 11, textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {registrosHora.map((r, i) => (
-                      <tr key={i} style={{ borderBottom: `1px solid ${COLORS.gray}`, background: i % 2 === 0 ? "white" : COLORS.gray }}>
-                        <td style={{ padding: "12px", fontFamily: "'DM Mono'", fontWeight: 600, color: COLORS.blue, whiteSpace: "nowrap" }}>{r.intervalo}</td>
-                        <td style={{ padding: "12px" }}>{r.data}</td>
-                        <td style={{ padding: "12px" }}><span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{r.turno}</span></td>
-                        <td style={{ padding: "12px", fontFamily: "'DM Mono'" }}>#{r.matricula}</td>
-                        <td style={{ padding: "12px" }}>{r.cortados}</td>
-                        <td style={{ padding: "12px" }}>{r.embolsados}</td>
-                        <td style={{ padding: "12px" }}>{r.autoclave}</td>
-                        <td style={{ padding: "12px" }}><span style={{ color: COLORS.success, fontWeight: 600 }}>{r.aprovados}</span></td>
-                        <td style={{ padding: "12px" }}><span style={{ color: r.reprovados > 0 ? COLORS.danger : COLORS.grayDark, fontWeight: r.reprovados > 0 ? 600 : 400 }}>{r.reprovados}</span></td>
-                        <td style={{ padding: "12px" }}>{r.amostras || "—"}</td>
-                        <td style={{ padding: "12px", maxWidth: 200 }}>
-                          {r.observacao
-                            ? <span style={{ fontSize: 12, color: COLORS.warning, background: COLORS.warningLight, padding: "3px 8px", borderRadius: 6 }}>📝 {r.observacao}</span>
-                            : "—"}
-                        </td>
+                    {horas.map((r, i) => (
+                      <tr key={i} style={{ borderBottom: `1px solid ${C.gray}`, background: i % 2 === 0 ? "white" : C.gray }}>
+                        <td style={{ padding: "10px", fontFamily: "'DM Mono'", fontWeight: 600, color: C.blue, whiteSpace: "nowrap" }}>{r.intervalo}</td>
+                        <td style={{ padding: "10px" }}>{r.data}</td>
+                        <td style={{ padding: "10px" }}><Tag bg={C.bluePale} color={C.blue}>{r.turno}</Tag></td>
+                        <td style={{ padding: "10px", fontFamily: "'DM Mono'" }}>#{r.matricula}</td>
+                        <td style={{ padding: "10px" }}>{r.cortados}</td>
+                        <td style={{ padding: "10px" }}>{r.embolsados}</td>
+                        <td style={{ padding: "10px" }}>{r.autoclave}</td>
+                        <td style={{ padding: "10px" }}><span style={{ color: C.success, fontWeight: 600 }}>{r.aprovados}</span></td>
+                        <td style={{ padding: "10px" }}><span style={{ color: r.reprovados > 0 ? C.danger : C.grayDark, fontWeight: r.reprovados > 0 ? 600 : 400 }}>{r.reprovados}</span></td>
+                        <td style={{ padding: "10px" }}>{r.amostras || "—"}</td>
+                        <td style={{ padding: "10px", maxWidth: 180 }}>{r.observacao ? <span style={{ fontSize: 12, color: C.warning, background: C.warningLight, padding: "3px 8px", borderRadius: 6 }}>📝 {r.observacao}</span> : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -766,36 +682,27 @@ export default function AGPHoraHora() {
               )}
               {abaHist === "painel" && (
                 <>
-                  <div style={{ fontSize: 13, color: COLORS.grayDark, marginBottom: 16 }}>Clique em um registro para ver o histórico completo do painel</div>
+                  <div style={{ fontSize: 13, color: C.grayDark, marginBottom: 14 }}>Clique para ver histórico completo do painel</div>
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                     <thead>
-                      <tr style={{ borderBottom: `2px solid ${COLORS.gray}` }}>
+                      <tr style={{ borderBottom: `2px solid ${C.gray}` }}>
                         {["Código","Data","Turno","Intervalo","Matrícula","Tipo","Status","Defeito","Amostras"].map(h => (
-                          <th key={h} style={{ padding: "10px 12px", textAlign: "left", color: COLORS.grayDark, fontWeight: 600, fontSize: 11, textTransform: "uppercase", letterSpacing: 0.5, whiteSpace: "nowrap" }}>{h}</th>
+                          <th key={h} style={{ padding: "10px", textAlign: "left", color: C.grayDark, fontWeight: 600, fontSize: 11, textTransform: "uppercase", whiteSpace: "nowrap" }}>{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody>
-                      {registrosPaineis.map((r, i) => (
-                        <tr key={i} className="clickable" style={{ borderBottom: `1px solid ${COLORS.gray}` }}
-                          onClick={() => { setPainelSelecionado(r.codigo); setTela("paineis"); }}>
-                          <td style={{ padding: "12px" }}><span style={{ fontFamily: "'DM Mono'", fontWeight: 600, color: COLORS.blue }}>{r.codigo}</span></td>
-                          <td style={{ padding: "12px" }}>{r.data}</td>
-                          <td style={{ padding: "12px" }}><span className="tag" style={{ background: COLORS.bluePale, color: COLORS.blue }}>{r.turno}</span></td>
-                          <td style={{ padding: "12px", fontFamily: "'DM Mono'", fontSize: 12, whiteSpace: "nowrap" }}>{r.intervalo}</td>
-                          <td style={{ padding: "12px", fontFamily: "'DM Mono'" }}>#{r.matricula}</td>
-                          <td style={{ padding: "12px" }}>
-                            <span className="tag" style={{ background: r.tipo === "novo" ? COLORS.successLight : COLORS.warningLight, color: r.tipo === "novo" ? COLORS.success : COLORS.warning }}>
-                              {r.tipo === "novo" ? "Novo" : "Retrabalho"}
-                            </span>
-                          </td>
-                          <td style={{ padding: "12px" }}>
-                            <span className="tag" style={{ background: r.status === "aprovado" ? COLORS.successLight : COLORS.dangerLight, color: r.status === "aprovado" ? COLORS.success : COLORS.danger }}>
-                              {r.status === "aprovado" ? "✓ Aprovado" : "✗ Reprovado"}
-                            </span>
-                          </td>
-                          <td style={{ padding: "12px", color: r.defeito ? COLORS.danger : COLORS.grayMid }}>{r.defeito || "—"}</td>
-                          <td style={{ padding: "12px" }}>{r.amostras || "—"}</td>
+                      {paineis.map((r, i) => (
+                        <tr key={i} className="cr" style={{ borderBottom: `1px solid ${C.gray}` }} onClick={() => { setPainelSel(r.codigo); setTela("paineis"); }}>
+                          <td style={{ padding: "10px" }}><span style={{ fontFamily: "'DM Mono'", fontWeight: 600, color: C.blue }}>{r.codigo}</span></td>
+                          <td style={{ padding: "10px" }}>{r.data}</td>
+                          <td style={{ padding: "10px" }}><Tag bg={C.bluePale} color={C.blue}>{r.turno}</Tag></td>
+                          <td style={{ padding: "10px", fontFamily: "'DM Mono'", fontSize: 12, whiteSpace: "nowrap" }}>{r.intervalo}</td>
+                          <td style={{ padding: "10px", fontFamily: "'DM Mono'" }}>#{r.matricula}</td>
+                          <td style={{ padding: "10px" }}><Tag bg={r.tipo === "novo" ? C.successLight : C.warningLight} color={r.tipo === "novo" ? C.success : C.warning}>{r.tipo === "novo" ? "Novo" : "Retrabalho"}</Tag></td>
+                          <td style={{ padding: "10px" }}><Tag bg={r.status === "aprovado" ? C.successLight : C.dangerLight} color={r.status === "aprovado" ? C.success : C.danger}>{r.status === "aprovado" ? "✓ Aprovado" : "✗ Reprovado"}</Tag></td>
+                          <td style={{ padding: "10px", color: r.defeito ? C.danger : C.grayMid }}>{r.defeito || "—"}</td>
+                          <td style={{ padding: "10px" }}>{r.amostras || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -806,31 +713,30 @@ export default function AGPHoraHora() {
           </div>
         )}
 
-        {/* PAINÉIS */}
+        {/* ── PAINÉIS ── */}
         {tela === "paineis" && (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 20 }}>
-            <div className="card" style={{ height: "fit-content" }}>
-              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Buscar Painel</div>
-              <input className="input-field" placeholder="Digite o código..." maxLength={8}
-                value={buscaCodigo} onChange={e => setBuscaCodigo(e.target.value.replace(/\D/g, ""))}
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div className="card">
+              <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Buscar Painel</div>
+              <input className="field" placeholder="Digite o código..." maxLength={8}
+                value={busca} onChange={e => setBusca(e.target.value.replace(/\D/g, ""))}
                 style={{ fontFamily: "'DM Mono'", marginBottom: 14, letterSpacing: 2 }} />
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {codigosFiltrados.map(codigo => {
-                  const hist = registrosPaineis.filter(r => r.codigo === codigo);
-                  const ultimo = hist[hist.length - 1];
-                  const retrabalhos = hist.filter(r => r.tipo === "retrabalho").length;
+                {codsFiltrados.map(codigo => {
+                  const hist = paineis.filter(p => p.codigo === codigo);
+                  const ult = hist[hist.length - 1];
+                  const ret = hist.filter(p => p.tipo === "retrabalho").length;
                   return (
-                    <div key={codigo} className={`painel-row ${painelSelecionado === codigo ? "selected" : ""}`}
-                      onClick={() => setPainelSelecionado(codigo)}>
+                    <div key={codigo} className={`prow ${painelSel === codigo ? "sel" : ""}`} onClick={() => setPainelSel(codigo)}>
                       <div>
-                        <div style={{ fontFamily: "'DM Mono'", fontWeight: 600, fontSize: 15, color: COLORS.blue }}>{codigo}</div>
-                        <div style={{ fontSize: 11, color: COLORS.grayDark, marginTop: 2 }}>{hist[0]?.data} • {hist.length} registro{hist.length > 1 ? "s" : ""}</div>
+                        <div style={{ fontFamily: "'DM Mono'", fontWeight: 600, fontSize: 15, color: C.blue }}>{codigo}</div>
+                        <div style={{ fontSize: 11, color: C.grayDark, marginTop: 2 }}>{hist[0]?.data} • {hist.length} registro(s)</div>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                        <span className="tag" style={{ background: ultimo?.status === "aprovado" ? COLORS.successLight : COLORS.dangerLight, color: ultimo?.status === "aprovado" ? COLORS.success : COLORS.danger, fontSize: 11 }}>
-                          {ultimo?.status === "aprovado" ? "✓ Aprovado" : "✗ Reprovado"}
-                        </span>
-                        {retrabalhos > 0 && <span className="tag" style={{ background: COLORS.warningLight, color: COLORS.warning, fontSize: 10 }}>↺ {retrabalhos}x retrabalho</span>}
+                        <Tag bg={ult?.status === "aprovado" ? C.successLight : C.dangerLight} color={ult?.status === "aprovado" ? C.success : C.danger}>
+                          {ult?.status === "aprovado" ? "✓ Aprovado" : "✗ Reprovado"}
+                        </Tag>
+                        {ret > 0 && <Tag bg={C.warningLight} color={C.warning}>↺ {ret}x retrabalho</Tag>}
                       </div>
                     </div>
                   );
@@ -838,210 +744,131 @@ export default function AGPHoraHora() {
               </div>
             </div>
 
-            <div>
-              {painelSelecionado ? (
-                <div className="card">
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
-                    <div>
-                      <div style={{ fontSize: 13, color: COLORS.grayDark, marginBottom: 4 }}>Histórico do Painel</div>
-                      <div style={{ fontFamily: "'DM Mono'", fontSize: 26, fontWeight: 700, color: COLORS.blue, letterSpacing: 3 }}>{painelSelecionado}</div>
+            {painelSel ? (
+              <div className="card">
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 10 }}>
+                  <div>
+                    <div style={{ fontSize: 13, color: C.grayDark, marginBottom: 4 }}>Histórico do Painel</div>
+                    <div style={{ fontFamily: "'DM Mono'", fontSize: 22, fontWeight: 700, color: C.blue, letterSpacing: 3 }}>{painelSel}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 10, textAlign: "center" }}>
+                    <div style={{ background: C.gray, borderRadius: 10, padding: "10px 14px" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700 }}>{histPainel.length}</div>
+                      <div style={{ fontSize: 11, color: C.grayDark }}>registros</div>
                     </div>
-                    <div style={{ display: "flex", gap: 12, textAlign: "center" }}>
-                      <div style={{ background: COLORS.gray, borderRadius: 10, padding: "10px 16px" }}>
-                        <div style={{ fontSize: 20, fontWeight: 700 }}>{historicoDoPanel.length}</div>
-                        <div style={{ fontSize: 11, color: COLORS.grayDark }}>registros</div>
-                      </div>
-                      <div style={{ background: COLORS.warningLight, borderRadius: 10, padding: "10px 16px" }}>
-                        <div style={{ fontSize: 20, fontWeight: 700, color: COLORS.warning }}>{historicoDoPanel.filter(r => r.tipo === "retrabalho").length}</div>
-                        <div style={{ fontSize: 11, color: COLORS.warning }}>retrabalhos</div>
-                      </div>
-                      <div style={{ background: historicoDoPanel[historicoDoPanel.length-1]?.status === "aprovado" ? COLORS.successLight : COLORS.dangerLight, borderRadius: 10, padding: "10px 16px" }}>
-                        <div style={{ fontSize: 13, fontWeight: 700, color: historicoDoPanel[historicoDoPanel.length-1]?.status === "aprovado" ? COLORS.success : COLORS.danger }}>
-                          {historicoDoPanel[historicoDoPanel.length-1]?.status === "aprovado" ? "✓ Aprovado" : "✗ Reprovado"}
-                        </div>
-                        <div style={{ fontSize: 11, color: COLORS.grayDark }}>status atual</div>
-                      </div>
+                    <div style={{ background: C.warningLight, borderRadius: 10, padding: "10px 14px" }}>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: C.warning }}>{histPainel.filter(p => p.tipo === "retrabalho").length}</div>
+                      <div style={{ fontSize: 11, color: C.warning }}>retrabalhos</div>
                     </div>
                   </div>
-                  <div style={{ paddingLeft: 8 }}>
-                    {historicoDoPanel.map((r, i) => (
-                      <div key={i} className="timeline-item">
-                        <div className="timeline-dot" style={{ background: r.status === "aprovado" ? COLORS.success : r.tipo === "retrabalho" ? COLORS.warning : COLORS.danger }} />
-                        <div style={{ background: COLORS.gray, borderRadius: 12, padding: "14px 16px", marginLeft: 8 }}>
-                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <span className="tag" style={{ background: r.tipo === "novo" ? COLORS.successLight : COLORS.warningLight, color: r.tipo === "novo" ? COLORS.success : COLORS.warning }}>
-                                {r.tipo === "novo" ? "✦ Novo" : "↺ Retrabalho"}
-                              </span>
-                              <span className="tag" style={{ background: r.status === "aprovado" ? COLORS.successLight : COLORS.dangerLight, color: r.status === "aprovado" ? COLORS.success : COLORS.danger }}>
-                                {r.status === "aprovado" ? "✓ Aprovado" : "✗ Reprovado"}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: 12, color: COLORS.grayDark }}>
-                              {r.data} • {r.turno} turno • <span style={{ fontFamily: "'DM Mono'" }}>{r.intervalo}</span> • #{r.matricula}
-                            </div>
+                </div>
+                <div style={{ paddingLeft: 8 }}>
+                  {histPainel.map((r, i) => (
+                    <div key={i} className="tl">
+                      <div className="tldot" style={{ background: r.status === "aprovado" ? C.success : r.tipo === "retrabalho" ? C.warning : C.danger }} />
+                      <div style={{ background: C.gray, borderRadius: 12, padding: "14px 16px", marginLeft: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 6 }}>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <Tag bg={r.tipo === "novo" ? C.successLight : C.warningLight} color={r.tipo === "novo" ? C.success : C.warning}>{r.tipo === "novo" ? "✦ Novo" : "↺ Retrabalho"}</Tag>
+                            <Tag bg={r.status === "aprovado" ? C.successLight : C.dangerLight} color={r.status === "aprovado" ? C.success : C.danger}>{r.status === "aprovado" ? "✓ Aprovado" : "✗ Reprovado"}</Tag>
                           </div>
-                          {r.defeito && <div style={{ fontSize: 13, color: COLORS.danger, marginBottom: 6 }}>⚠ Defeito: <strong>{r.defeito}</strong></div>}
-                          {r.motivoRetrabalho && <div style={{ fontSize: 13, color: COLORS.warning, marginBottom: 4 }}>↺ Defeito anterior: <strong>{r.motivoRetrabalho}</strong></div>}
-                          {r.descricaoRetrabalho && (
-                            <div style={{ fontSize: 13, color: COLORS.text, background: COLORS.warningLight, borderRadius: 8, padding: "8px 12px", marginTop: 6, borderLeft: `3px solid ${COLORS.warning}` }}>
-                              📝 {r.descricaoRetrabalho}
-                            </div>
-                          )}
-                          {r.amostras > 0 && <div style={{ fontSize: 13, color: COLORS.purple, marginTop: 6 }}>✂ Amostras cortadas: <strong>{r.amostras}</strong></div>}
+                          <div style={{ fontSize: 12, color: C.grayDark }}>{r.data} • {r.turno} • <span style={{ fontFamily: "'DM Mono'" }}>{r.intervalo}</span> • #{r.matricula}</div>
                         </div>
+                        {r.defeito && <div style={{ fontSize: 13, color: C.danger, marginBottom: 4 }}>⚠ Defeito: <strong>{r.defeito}</strong></div>}
+                        {r.motivoRetrabalho && <div style={{ fontSize: 13, color: C.warning, marginBottom: 4 }}>↺ Defeito anterior: <strong>{r.motivoRetrabalho}</strong></div>}
+                        {r.descricaoRetrabalho && <div style={{ fontSize: 13, color: C.text, background: C.warningLight, borderRadius: 8, padding: "8px 12px", marginTop: 6, borderLeft: `3px solid ${C.warning}` }}>📝 {r.descricaoRetrabalho}</div>}
+                        {r.amostras > 0 && <div style={{ fontSize: 13, color: C.purple, marginTop: 6 }}>✂ Amostras: <strong>{r.amostras}</strong></div>}
                       </div>
-                    ))}
-                  </div>
+                    </div>
+                  ))}
                 </div>
-              ) : (
-                <div className="card" style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
-                  <div style={{ textAlign: "center", color: COLORS.grayDark }}>
-                    <div style={{ fontSize: 40, marginBottom: 12 }}>🔍</div>
-                    <div style={{ fontSize: 15, fontWeight: 500 }}>Selecione um painel para ver o histórico</div>
-                    <div style={{ fontSize: 13, marginTop: 4 }}>Clique em um código na lista ao lado</div>
-                  </div>
-                </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="card" style={{ textAlign: "center", padding: 40, color: C.grayDark }}>
+                <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
+                <div style={{ fontSize: 15, fontWeight: 500 }}>Selecione um painel acima</div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* AUTOCLAVE */}
+        {/* ── AUTOCLAVE ── */}
         {tela === "autoclave" && (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-
-            {/* Sub nav */}
             <div style={{ display: "flex", background: "white", borderRadius: 12, padding: 4, gap: 4, boxShadow: "0 1px 4px rgba(0,58,140,0.07)" }}>
               {[["dashboard","📊 Visão Geral"],["novo","➕ Novo Ciclo"],["avaliar","✅ Avaliar Retorno"]].map(([k,v]) => (
-                <button key={k} onClick={() => setAbaAutoclave(k)}
-                  style={{ flex: 1, padding: "10px 8px", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "'DM Sans'", fontSize: 13, fontWeight: abaAutoclave === k ? 700 : 500, background: abaAutoclave === k ? COLORS.blue : "none", color: abaAutoclave === k ? "white" : COLORS.grayDark }}>
+                <button key={k} className="snav" onClick={() => setAbaAuto(k)}
+                  style={{ fontWeight: abaAuto === k ? 700 : 500, background: abaAuto === k ? C.blue : "none", color: abaAuto === k ? "white" : C.grayDark }}>
                   {v}
                 </button>
               ))}
             </div>
 
-            {/* VISÃO GERAL */}
-            {abaAutoclave === "dashboard" && <AutoclaveVisaoGeral ciclos={ciclos} setCicloAvaliando={setCicloAvaliando} setAbaAutoclave={setAbaAutoclave} COLORS={COLORS} />}
+            {abaAuto === "dashboard" && <AutoclaveVisao ciclos={ciclos} setCicloAvaliando={setCicloAval} setAba={setAbaAuto} />}
 
-            {/* NOVO CICLO */}
-            {abaAutoclave === "novo" && (
+            {abaAuto === "novo" && (
               <div style={{ maxWidth: 600, margin: "0 auto", width: "100%" }}>
-                <div className="card" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div>
                     <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Registrar Envio para Autoclave</div>
-                    <div style={{ fontSize: 13, color: COLORS.grayDark }}>Preencha os dados do ciclo antes de enviar</div>
+                    <div style={{ fontSize: 13, color: C.grayDark }}>Preencha os dados do ciclo</div>
                   </div>
-
-                  {/* Matrícula + Data */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
-                      <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Matrícula</label>
-                      <input className="input-field" placeholder="Ex: 3789"
-                        value={formCiclo.matricula} onChange={e => setFormCiclo({ ...formCiclo, matricula: e.target.value.replace(/\D/g, "") })}
-                        style={{ fontFamily: "'DM Mono'", fontWeight: 600, letterSpacing: 2 }} />
+                      <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Matrícula</label>
+                      <input className="field" placeholder="Ex: 3789" value={fc.matricula} onChange={e => setFc(p => ({ ...p, matricula: e.target.value.replace(/\D/g, "") }))} style={{ fontFamily: "'DM Mono'", fontWeight: 600, letterSpacing: 2 }} />
                     </div>
                     <div>
-                      <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Data de Envio</label>
-                      <input className="input-field" type="date"
-                        value={formCiclo.dataEnvio} onChange={e => setFormCiclo({ ...formCiclo, dataEnvio: e.target.value })} />
+                      <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Data de Envio</label>
+                      <input className="field" type="date" value={fc.dataEnvio} onChange={e => setFc(p => ({ ...p, dataEnvio: e.target.value }))} />
                     </div>
                   </div>
-
-                  {/* Fim de semana */}
-                  <div>
-                    <button onClick={() => setFormCiclo({ ...formCiclo, fimDeSemana: !formCiclo.fimDeSemana })}
-                      style={{ padding: "10px 16px", border: `1.5px solid ${formCiclo.fimDeSemana ? COLORS.purple : COLORS.grayMid}`, background: formCiclo.fimDeSemana ? "#F3E8FF" : "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 500, cursor: "pointer", color: formCiclo.fimDeSemana ? COLORS.purple : COLORS.grayDark }}>
-                      {formCiclo.fimDeSemana ? "✓" : "○"} Ciclo de Fim de Semana
-                    </button>
-                  </div>
-
-                  {/* Adicionar painéis */}
-                  <div style={{ borderTop: `1px solid ${COLORS.gray}`, paddingTop: 16 }}>
-                    <div className="section-label" style={{ color: COLORS.blue }}>Painéis do Ciclo</div>
+                  <button onClick={() => setFc(p => ({ ...p, fimDeSemana: !p.fimDeSemana }))}
+                    style={{ padding: "10px 16px", border: `1.5px solid ${fc.fimDeSemana ? C.purple : C.grayMid}`, background: fc.fimDeSemana ? C.purpleLight : "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 500, cursor: "pointer", color: fc.fimDeSemana ? C.purple : C.grayDark, textAlign: "left" }}>
+                    {fc.fimDeSemana ? "✓" : "○"} Ciclo de Fim de Semana
+                  </button>
+                  <div style={{ borderTop: `1px solid ${C.gray}`, paddingTop: 14 }}>
+                    <div className="lbl" style={{ color: C.blue }}>Painéis do Ciclo</div>
                     <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                      <input className="input-field" placeholder="Código do painel (8 dígitos)" maxLength={8}
-                        value={novoCodigo} onChange={e => setNovoCodigo(e.target.value.replace(/\D/g, ""))}
+                      <input className="field" placeholder="Código (8 dígitos)" maxLength={8} value={novoCod} onChange={e => setNovoCod(e.target.value.replace(/\D/g, ""))}
                         style={{ fontFamily: "'DM Mono'", fontWeight: 600, letterSpacing: 2 }}
-                        onKeyDown={e => {
-                          if (e.key === "Enter" && novoCodigo.length === 8) {
-                            setFormCiclo({ ...formCiclo, paineis: [...formCiclo.paineis, { codigo: novoCodigo, reprocesso: false, resultado: null, defeito: null }] });
-                            setNovoCodigo("");
-                          }
-                        }} />
-                      <button onClick={() => {
-                        if (novoCodigo.length === 8) {
-                          setFormCiclo({ ...formCiclo, paineis: [...formCiclo.paineis, { codigo: novoCodigo, reprocesso: false, resultado: null, defeito: null }] });
-                          setNovoCodigo("");
-                        }
-                      }} style={{ padding: "10px 16px", background: COLORS.blue, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", fontSize: 14 }}>
-                        + Adicionar
+                        onKeyDown={e => { if (e.key === "Enter" && novoCod.length === 8) { setFc(p => ({ ...p, paineis: [...p.paineis, { codigo: novoCod, reprocesso: false, resultado: null, defeito: null }] })); setNovoCod(""); } }} />
+                      <button onClick={() => { if (novoCod.length === 8) { setFc(p => ({ ...p, paineis: [...p.paineis, { codigo: novoCod, reprocesso: false, resultado: null, defeito: null }] })); setNovoCod(""); } }}
+                        style={{ padding: "10px 14px", background: C.blue, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
+                        + Add
                       </button>
                     </div>
-
-                    {formCiclo.paineis.length === 0 ? (
-                      <div style={{ textAlign: "center", padding: "20px", color: COLORS.grayDark, fontSize: 13, background: COLORS.gray, borderRadius: 10 }}>
-                        Nenhum painel adicionado ainda
-                      </div>
+                    {fc.paineis.length === 0 ? (
+                      <div style={{ textAlign: "center", padding: 20, color: C.grayDark, fontSize: 13, background: C.gray, borderRadius: 10 }}>Nenhum painel adicionado</div>
                     ) : (
                       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {formCiclo.paineis.map((p, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: COLORS.gray, borderRadius: 10, padding: "10px 14px" }}>
-                            <span style={{ fontFamily: "'DM Mono'", fontWeight: 600, color: COLORS.blue, fontSize: 15 }}>{p.codigo}</span>
-                            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                              <button onClick={() => {
-                                const updated = [...formCiclo.paineis];
-                                updated[i] = { ...updated[i], reprocesso: !updated[i].reprocesso };
-                                setFormCiclo({ ...formCiclo, paineis: updated });
-                              }} style={{ padding: "5px 12px", border: `1.5px solid ${p.reprocesso ? COLORS.warning : COLORS.grayMid}`, background: p.reprocesso ? COLORS.warningLight : "white", borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer", color: p.reprocesso ? COLORS.warning : COLORS.grayDark }}>
-                                {p.reprocesso ? "↺ Reprocesso" : "↺ Marcar reprocesso"}
+                        {fc.paineis.map((p, i) => (
+                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.gray, borderRadius: 10, padding: "10px 14px" }}>
+                            <span style={{ fontFamily: "'DM Mono'", fontWeight: 600, color: C.blue, fontSize: 15 }}>{p.codigo}</span>
+                            <div style={{ display: "flex", gap: 8 }}>
+                              <button onClick={() => { const u = [...fc.paineis]; u[i] = { ...u[i], reprocesso: !u[i].reprocesso }; setFc(prev => ({ ...prev, paineis: u })); }}
+                                style={{ padding: "5px 10px", border: `1.5px solid ${p.reprocesso ? C.warning : C.grayMid}`, background: p.reprocesso ? C.warningLight : "white", borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer", color: p.reprocesso ? C.warning : C.grayDark }}>
+                                {p.reprocesso ? "↺ Reprocesso" : "Marcar ↺"}
                               </button>
-                              <button onClick={() => {
-                                const updated = formCiclo.paineis.filter((_, idx) => idx !== i);
-                                setFormCiclo({ ...formCiclo, paineis: updated });
-                              }} style={{ padding: "5px 10px", border: "none", background: COLORS.dangerLight, borderRadius: 8, color: COLORS.danger, cursor: "pointer", fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600 }}>
-                                ✕
-                              </button>
+                              <button onClick={() => setFc(prev => ({ ...prev, paineis: prev.paineis.filter((_, idx) => idx !== i) }))}
+                                style={{ padding: "5px 10px", border: "none", background: C.dangerLight, borderRadius: 8, color: C.danger, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>✕</button>
                             </div>
                           </div>
                         ))}
-                        <div style={{ fontSize: 13, color: COLORS.grayDark, textAlign: "right", marginTop: 4 }}>
-                          Total: <strong>{formCiclo.paineis.length} painel(is)</strong>
-                        </div>
+                        <div style={{ fontSize: 13, color: C.grayDark, textAlign: "right" }}>Total: <strong>{fc.paineis.length} painel(is)</strong></div>
                       </div>
                     )}
                   </div>
-
-                  {/* Observação */}
                   <div>
-                    <label style={{ fontSize: 13, fontWeight: 500, color: COLORS.grayDark, display: "block", marginBottom: 6 }}>Observação (opcional)</label>
-                    <textarea className="input-field" rows={2} placeholder="Ex: Carrinho 1 e 2 enviados juntos..."
-                      value={formCiclo.observacao} onChange={e => setFormCiclo({ ...formCiclo, observacao: e.target.value })}
-                      style={{ resize: "vertical" }} />
+                    <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Observação (opcional)</label>
+                    <textarea className="field" rows={2} placeholder="Ex: Carrinhos 1 e 2 enviados juntos..." value={fc.obs} onChange={e => setFc(p => ({ ...p, obs: e.target.value }))} style={{ resize: "vertical" }} />
                   </div>
-
-                  <button className="btn-primary" onClick={() => {
-                    if (!formCiclo.matricula || formCiclo.paineis.length === 0) return;
-                    const id = `C${String(ciclos.length + 1).padStart(3, "0")}`;
-                    const dataEnvio = formCiclo.dataEnvio ? new Date(formCiclo.dataEnvio).toLocaleDateString("pt-BR") : hoje;
-                    const dataRetorno = formCiclo.dataEnvio ? new Date(new Date(formCiclo.dataEnvio).getTime() + 86400000).toLocaleDateString("pt-BR") : hoje;
-                    setCiclos([...ciclos, { id, dataEnvio, dataRetorno, matricula: formCiclo.matricula, fimDeSemana: formCiclo.fimDeSemana, observacao: formCiclo.observacao || null, paineis: formCiclo.paineis, avaliado: false }]);
-                    setFormCiclo(FORM_CICLO_INICIAL);
-                    setAbaAutoclave("dashboard");
-                  }}>
-                    Confirmar Envio para Autoclave
-                  </button>
+                  <button className="btn" onClick={salvarCiclo}>Confirmar Envio para Autoclave</button>
                 </div>
               </div>
             )}
 
-            {/* AVALIAR RETORNO */}
-            {abaAutoclave === "avaliar" && <AutoclaveAvaliar
-              ciclos={ciclos} setCiclos={setCiclos}
-              cicloAvaliando={cicloAvaliando} setCicloAvaliando={setCicloAvaliando}
-              setAbaAutoclave={setAbaAutoclave} COLORS={COLORS}
-            />}
-
+            {abaAuto === "avaliar" && <AutoclaveAvaliar ciclos={ciclos} setCiclos={setCiclos} cicloAvaliando={cicloAval} setCicloAvaliando={setCicloAval} setAba={setAbaAuto} />}
           </div>
         )}
 
