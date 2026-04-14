@@ -32,6 +32,17 @@ const MOCK_PAINEIS = [
   { codigo: "35002459", data: "10/04/2025", turno: "1º", intervalo: "10h → 11h", tipo: "novo", status: "aprovado", defeito: null, descricaoRetrabalho: null, motivoRetrabalho: null, amostras: 3, matricula: "3789" },
 ];
 
+// Estrutura do carrinho: 4 prateleiras x 2 lados x 3 slots
+function carrinhoVazio() {
+  const c = {};
+  [1,2,3,4].forEach(p => {
+    ["porta","fundo"].forEach(l => {
+      c[`${p}-${l}`] = [null, null, null]; // até 3 painéis por espaço
+    });
+  });
+  return c;
+}
+
 const MOCK_CICLOS = [
   {
     id: "C001", dataEnvio: "10/04/2025", dataRetorno: "11/04/2025",
@@ -134,6 +145,108 @@ function CardNum({ label, valor, cor }) {
     </div>
   );
 }
+
+function Carrinho({ carrinho, setCarrinho, soLeitura, resultados }) {
+  const [editando, setEditando] = useState(null); // "p-lado-slot"
+  const [inputCod, setInputCod] = useState("");
+
+  function setCodigo(prat, lado, slot, valor) {
+    const key = `${prat}-${lado}`;
+    const slots = [...(carrinho[key] || [null,null,null])];
+    slots[slot] = valor || null;
+    setCarrinho(prev => ({ ...prev, [key]: slots }));
+  }
+
+  function getResultado(codigo) {
+    if (!resultados || !codigo) return null;
+    return resultados[codigo] || null;
+  }
+
+  function corResultado(res) {
+    if (!res) return C.gray;
+    if (res.resultado === "aprovado") return C.successLight;
+    if (res.resultado === "reprovado") return C.dangerLight;
+    return C.gray;
+  }
+
+  function bordaResultado(res) {
+    if (!res) return C.grayMid;
+    if (res.resultado === "aprovado") return C.success;
+    if (res.resultado === "reprovado") return C.danger;
+    return C.grayMid;
+  }
+
+  return (
+    <div style={{ background: C.gray, borderRadius: 14, padding: 16 }}>
+      {/* Header */}
+      <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 1fr", gap: 8, marginBottom: 10 }}>
+        <div />
+        <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: C.blue, background: C.bluePale, borderRadius: 8, padding: "6px 0" }}>🚪 Lado Porta</div>
+        <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 8, padding: "6px 0" }}>🏭 Lado Fundo</div>
+      </div>
+
+      {/* Prateleiras — de cima pra baixo (4 → 1) */}
+      {[4,3,2,1].map(prat => (
+        <div key={prat} style={{ display: "grid", gridTemplateColumns: "60px 1fr 1fr", gap: 8, marginBottom: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 8, padding: "4px 0" }}>
+            P{prat}
+          </div>
+          {["porta","fundo"].map(lado => {
+            const key = `${prat}-${lado}`;
+            const slots = carrinho[key] || [null,null,null];
+            const preenchidos = slots.filter(s => s !== null).length;
+            return (
+              <div key={lado} style={{ background: "white", borderRadius: 10, padding: 8, border: `1.5px solid ${C.grayMid}`, display: "flex", flexDirection: "column", gap: 4 }}>
+                {slots.map((cod, si) => {
+                  const res = getResultado(cod);
+                  const eKey = `${prat}-${lado}-${si}`;
+                  const isEditando = editando === eKey;
+                  return (
+                    <div key={si} style={{ background: corResultado(res), border: `1.5px solid ${bordaResultado(res)}`, borderRadius: 8, padding: "5px 8px", minHeight: 34, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                      {isEditando && !soLeitura ? (
+                        <input
+                          autoFocus
+                          value={inputCod}
+                          maxLength={8}
+                          onChange={e => setInputCod(e.target.value.replace(/\D/g,""))}
+                          onBlur={() => { setCodigo(prat, lado, si, inputCod); setEditando(null); setInputCod(""); }}
+                          onKeyDown={e => { if (e.key === "Enter") { setCodigo(prat, lado, si, inputCod); setEditando(null); setInputCod(""); } if (e.key === "Escape") { setEditando(null); setInputCod(""); } }}
+                          style={{ width: "100%", border: "none", background: "transparent", fontFamily: "'DM Mono'", fontSize: 12, fontWeight: 600, outline: "none", color: C.text }}
+                          placeholder="00000000"
+                        />
+                      ) : (
+                        <span
+                          onClick={() => { if (!soLeitura) { setEditando(eKey); setInputCod(cod || ""); } }}
+                          style={{ fontFamily: "'DM Mono'", fontSize: 12, fontWeight: cod ? 600 : 400, color: cod ? C.blue : C.grayMid, cursor: soLeitura ? "default" : "pointer", flex: 1 }}>
+                          {cod || (soLeitura ? "—" : "Toque para adicionar")}
+                        </span>
+                      )}
+                      {cod && !soLeitura && !isEditando && (
+                        <button onClick={() => setCodigo(prat, lado, si, null)}
+                          style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 12, fontWeight: 700, padding: "0 2px" }}>✕</button>
+                      )}
+                      {cod && res && res.resultado && (
+                        <span style={{ fontSize: 10, fontWeight: 700, color: res.resultado === "aprovado" ? C.success : C.danger }}>
+                          {res.resultado === "aprovado" ? "✓" : "✗"}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+                <div style={{ fontSize: 10, color: C.grayDark, textAlign: "right", marginTop: 2 }}>{preenchidos}/3</div>
+              </div>
+            );
+          })}
+        </div>
+      ))}
+
+      <div style={{ fontSize: 12, color: C.grayDark, textAlign: "center", marginTop: 8 }}>
+        Total: <strong>{Object.values(carrinho).flat().filter(Boolean).length} painel(is)</strong>
+      </div>
+    </div>
+  );
+}
+
 
 function AutoclaveVisao({ ciclos, setCicloAvaliando, setAba }) {
   const tot = ciclos.reduce((s, c) => s + c.paineis.length, 0);
@@ -271,16 +384,32 @@ function AutoclaveAvaliar({ ciclos, setCiclos, cicloAvaliando, setCicloAvaliando
           <Tag bg={C.dangerLight} color={C.danger}>✗ {atual.paineis.filter(p => p.resultado === "reprovado").length}</Tag>
         </div>
       </div>
+
+      {/* Carrinho visual com resultados se disponível */}
+      {atual.carrinho && (
+        <div style={{ marginBottom: 20 }}>
+          <div className="lbl" style={{ color: C.blue }}>Posição no Carrinho</div>
+          <Carrinho
+            carrinho={atual.carrinho}
+            setCarrinho={() => {}}
+            soLeitura={true}
+            resultados={Object.fromEntries(atual.paineis.map(p => [p.codigo, p]))}
+          />
+        </div>
+      )}
+
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
         {atual.paineis.map((p, i) => {
           const bgColor = p.resultado === "aprovado" ? C.successLight : p.resultado === "reprovado" ? C.dangerLight : C.gray;
           const bdColor = p.resultado === "aprovado" ? C.success : p.resultado === "reprovado" ? C.danger : C.grayMid;
+          const pos = p.posicao ? `P${p.posicao.prateleira} · ${p.posicao.lado === "porta" ? "Porta" : "Fundo"}` : null;
           return (
             <div key={i} style={{ background: bgColor, borderRadius: 12, padding: "12px 16px", border: `1.5px solid ${bdColor}` }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: C.blue, fontSize: 15 }}>{p.codigo}</span>
                   {p.reprocesso && <Tag bg={C.warningLight} color={C.warning}>↺ Reprocesso</Tag>}
+                  {pos && <span style={{ fontSize: 11, color: C.grayDark, background: "white", padding: "2px 8px", borderRadius: 6 }}>{pos}</span>}
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
                   <button onClick={() => marcar(atual.id, p.codigo, "aprovado", null)}
@@ -335,7 +464,7 @@ export default function App() {
 
   const [fh, setFh] = useState({ matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", rep_dobras: "", rep_mole: "", amostras: "", obs: "" });
   const [fp, setFp] = useState({ matricula: "", turno: "1º", codigo: "", tipo: "novo", intervalo: "07h → 08h", rep_dobras: "", rep_mole: "", amostras: "", motivo: "", descricao: "" });
-  const [fc, setFc] = useState({ matricula: "", dataEnvio: "", fimDeSemana: false, obs: "", paineis: [] });
+  const [fc, setFc] = useState({ matricula: "", dataEnvio: "", fimDeSemana: false, obs: "", paineis: [], carrinho: carrinhoVazio() });
   const [ehFh, setEhFh] = useState({});
   const [ehFp, setEhFp] = useState({});
 
@@ -373,12 +502,18 @@ export default function App() {
   }
 
   function salvarCiclo() {
-    if (!fc.matricula || fc.paineis.length === 0) return;
+    if (!fc.matricula) return;
+    // Collect paineis from carrinho
+    const paineisDoCarro = Object.entries(fc.carrinho).flatMap(([key, slots]) => {
+      const [prat, lado] = key.split("-");
+      return slots.map((cod, si) => cod ? { codigo: cod, reprocesso: false, resultado: null, defeito: null, posicao: { prateleira: Number(prat), lado, slot: si } } : null).filter(Boolean);
+    });
+    if (paineisDoCarro.length === 0) return;
     const id = `C${String(ciclos.length + 1).padStart(3, "0")}`;
     const de = fc.dataEnvio ? new Date(fc.dataEnvio).toLocaleDateString("pt-BR") : hoje;
     const dr = fc.dataEnvio ? new Date(new Date(fc.dataEnvio).getTime() + 86400000).toLocaleDateString("pt-BR") : hoje;
-    setCiclos(prev => [...prev, { id, dataEnvio: de, dataRetorno: dr, matricula: fc.matricula, fimDeSemana: fc.fimDeSemana, observacao: fc.obs || null, avaliado: false, paineis: fc.paineis }]);
-    setFc({ matricula: "", dataEnvio: "", fimDeSemana: false, obs: "", paineis: [] });
+    setCiclos(prev => [...prev, { id, dataEnvio: de, dataRetorno: dr, matricula: fc.matricula, fimDeSemana: fc.fimDeSemana, observacao: fc.obs || null, avaliado: false, paineis: paineisDoCarro, carrinho: fc.carrinho }]);
+    setFc({ matricula: "", dataEnvio: "", fimDeSemana: false, obs: "", paineis: [], carrinho: carrinhoVazio() });
     setAbaAuto("dashboard");
   }
 
@@ -828,36 +963,9 @@ export default function App() {
                     {fc.fimDeSemana ? "✓" : "○"} Ciclo de Fim de Semana
                   </button>
                   <div style={{ borderTop: `1px solid ${C.gray}`, paddingTop: 14 }}>
-                    <div className="lbl" style={{ color: C.blue }}>Painéis do Ciclo</div>
-                    <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                      <input className="field" placeholder="Código (8 dígitos)" maxLength={8} value={novoCod} onChange={e => setNovoCod(e.target.value.replace(/\D/g, ""))}
-                        style={{ fontFamily: "'DM Mono'", fontWeight: 600, letterSpacing: 2 }}
-                        onKeyDown={e => { if (e.key === "Enter" && novoCod.length === 8) { setFc(p => ({ ...p, paineis: [...p.paineis, { codigo: novoCod, reprocesso: false, resultado: null, defeito: null }] })); setNovoCod(""); } }} />
-                      <button onClick={() => { if (novoCod.length === 8) { setFc(p => ({ ...p, paineis: [...p.paineis, { codigo: novoCod, reprocesso: false, resultado: null, defeito: null }] })); setNovoCod(""); } }}
-                        style={{ padding: "10px 14px", background: C.blue, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap" }}>
-                        + Add
-                      </button>
-                    </div>
-                    {fc.paineis.length === 0 ? (
-                      <div style={{ textAlign: "center", padding: 20, color: C.grayDark, fontSize: 13, background: C.gray, borderRadius: 10 }}>Nenhum painel adicionado</div>
-                    ) : (
-                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                        {fc.paineis.map((p, i) => (
-                          <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.gray, borderRadius: 10, padding: "10px 14px" }}>
-                            <span style={{ fontFamily: "'DM Mono'", fontWeight: 600, color: C.blue, fontSize: 15 }}>{p.codigo}</span>
-                            <div style={{ display: "flex", gap: 8 }}>
-                              <button onClick={() => { const u = [...fc.paineis]; u[i] = { ...u[i], reprocesso: !u[i].reprocesso }; setFc(prev => ({ ...prev, paineis: u })); }}
-                                style={{ padding: "5px 10px", border: `1.5px solid ${p.reprocesso ? C.warning : C.grayMid}`, background: p.reprocesso ? C.warningLight : "white", borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer", color: p.reprocesso ? C.warning : C.grayDark }}>
-                                {p.reprocesso ? "↺ Reprocesso" : "Marcar ↺"}
-                              </button>
-                              <button onClick={() => setFc(prev => ({ ...prev, paineis: prev.paineis.filter((_, idx) => idx !== i) }))}
-                                style={{ padding: "5px 10px", border: "none", background: C.dangerLight, borderRadius: 8, color: C.danger, cursor: "pointer", fontSize: 12, fontWeight: 600 }}>✕</button>
-                            </div>
-                          </div>
-                        ))}
-                        <div style={{ fontSize: 13, color: C.grayDark, textAlign: "right" }}>Total: <strong>{fc.paineis.length} painel(is)</strong></div>
-                      </div>
-                    )}
+                    <div className="lbl" style={{ color: C.blue }}>Carrinho — Posição dos Painéis</div>
+                    <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 10 }}>Toque em cada espaço para adicionar o código do painel. P1 = prateleira de baixo, P4 = de cima.</div>
+                    <Carrinho carrinho={fc.carrinho} setCarrinho={c => setFc(p => ({ ...p, carrinho: c }))} soLeitura={false} resultados={null} />
                   </div>
                   <div>
                     <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Observação (opcional)</label>
