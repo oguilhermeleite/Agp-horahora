@@ -177,18 +177,18 @@ function Carrinho({ carrinho, setCarrinho, soLeitura, resultados }) {
   }
 
   return (
-    <div style={{ background: C.gray, borderRadius: 14, padding: 16 }}>
+    <div style={{ background: C.gray, borderRadius: 14, padding: 12 }}>
       {/* Header */}
-      <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 1fr", gap: 8, marginBottom: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "44px 1fr 1fr", gap: 6, marginBottom: 8 }}>
         <div />
-        <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: C.blue, background: C.bluePale, borderRadius: 8, padding: "6px 0" }}>👉 Lado Direito</div>
-        <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 8, padding: "6px 0" }}>👈 Lado Esquerdo</div>
+        <div style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: C.blue, background: C.bluePale, borderRadius: 6, padding: "5px 0" }}>Lado Direito</div>
+        <div style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 6, padding: "5px 0" }}>Lado Esquerdo</div>
       </div>
 
       {/* Prateleiras — de cima pra baixo (4 → 1) */}
       {[4,3,2,1].map(prat => (
-        <div key={prat} style={{ display: "grid", gridTemplateColumns: "60px 1fr 1fr", gap: 8, marginBottom: 8 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 8, padding: "4px 0" }}>
+        <div key={prat} style={{ display: "grid", gridTemplateColumns: "44px 1fr 1fr", gap: 6, marginBottom: 6 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 6 }}>
             P{prat}
           </div>
           {["porta","fundo"].map(lado => {
@@ -196,13 +196,13 @@ function Carrinho({ carrinho, setCarrinho, soLeitura, resultados }) {
             const slots = carrinho[key] || [null,null,null];
             const preenchidos = slots.filter(s => s !== null).length;
             return (
-              <div key={lado} style={{ background: "white", borderRadius: 10, padding: 8, border: `1.5px solid ${C.grayMid}`, display: "flex", flexDirection: "column", gap: 4 }}>
+              <div key={lado} style={{ background: "white", borderRadius: 8, padding: "6px", border: `1.5px solid ${C.grayMid}`, display: "flex", flexDirection: "column", gap: 3 }}>
                 {slots.map((cod, si) => {
                   const res = getResultado(cod);
                   const eKey = `${prat}-${lado}-${si}`;
                   const isEditando = editando === eKey;
                   return (
-                    <div key={si} style={{ background: corResultado(res), border: `1.5px solid ${bordaResultado(res)}`, borderRadius: 8, padding: "5px 8px", minHeight: 34, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4 }}>
+                    <div key={si} style={{ background: corResultado(res), border: `1px solid ${bordaResultado(res)}`, borderRadius: 6, padding: "3px 6px", height: 26, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
                       {isEditando && !soLeitura ? (
                         <input
                           autoFocus
@@ -211,36 +211,36 @@ function Carrinho({ carrinho, setCarrinho, soLeitura, resultados }) {
                           onChange={e => setInputCod(e.target.value.replace(/\D/g,""))}
                           onBlur={() => { setCodigo(prat, lado, si, inputCod); setEditando(null); setInputCod(""); }}
                           onKeyDown={e => { if (e.key === "Enter") { setCodigo(prat, lado, si, inputCod); setEditando(null); setInputCod(""); } if (e.key === "Escape") { setEditando(null); setInputCod(""); } }}
-                          style={{ width: "100%", border: "none", background: "transparent", fontFamily: "'DM Mono'", fontSize: 12, fontWeight: 600, outline: "none", color: C.text }}
+                          style={{ width: "100%", border: "none", background: "transparent", fontFamily: "'DM Mono'", fontSize: 11, fontWeight: 600, outline: "none", color: C.text }}
                           placeholder="00000000"
                         />
                       ) : (
                         <span
                           onClick={() => { if (!soLeitura) { setEditando(eKey); setInputCod(cod || ""); } }}
-                          style={{ fontFamily: "'DM Mono'", fontSize: 12, fontWeight: cod ? 600 : 400, color: cod ? C.blue : C.grayMid, cursor: soLeitura ? "default" : "pointer", flex: 1 }}>
-                          {cod || (soLeitura ? "—" : "Toque para adicionar")}
+                          style={{ fontFamily: "'DM Mono'", fontSize: 11, fontWeight: cod ? 600 : 400, color: cod ? C.blue : C.grayMid, cursor: soLeitura ? "default" : "pointer", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {cod || (soLeitura ? "—" : "· · ·")}
                         </span>
                       )}
                       {cod && !soLeitura && !isEditando && (
                         <button onClick={() => setCodigo(prat, lado, si, null)}
-                          style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 12, fontWeight: 700, padding: "0 2px" }}>✕</button>
+                          style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 11, fontWeight: 700, padding: 0, lineHeight: 1 }}>✕</button>
                       )}
                       {cod && res && res.resultado && (
-                        <span style={{ fontSize: 10, fontWeight: 700, color: res.resultado === "aprovado" ? C.success : C.danger }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: res.resultado === "aprovado" ? C.success : C.danger, flexShrink: 0 }}>
                           {res.resultado === "aprovado" ? "✓" : "✗"}
                         </span>
                       )}
                     </div>
                   );
                 })}
-                <div style={{ fontSize: 10, color: C.grayDark, textAlign: "right", marginTop: 2 }}>{preenchidos}/3</div>
+                <div style={{ fontSize: 10, color: C.grayDark, textAlign: "right" }}>{preenchidos}/3</div>
               </div>
             );
           })}
         </div>
       ))}
 
-      <div style={{ fontSize: 12, color: C.grayDark, textAlign: "center", marginTop: 8 }}>
+      <div style={{ fontSize: 12, color: C.grayDark, textAlign: "center", marginTop: 6 }}>
         Total: <strong>{Object.values(carrinho).flat().filter(Boolean).length} painel(is)</strong>
       </div>
     </div>
