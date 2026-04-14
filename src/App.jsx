@@ -181,8 +181,8 @@ function Carrinho({ carrinho, setCarrinho, soLeitura, resultados }) {
       {/* Header */}
       <div style={{ display: "grid", gridTemplateColumns: "60px 1fr 1fr", gap: 8, marginBottom: 10 }}>
         <div />
-        <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: C.blue, background: C.bluePale, borderRadius: 8, padding: "6px 0" }}>🚪 Lado Porta</div>
-        <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 8, padding: "6px 0" }}>🏭 Lado Fundo</div>
+        <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: C.blue, background: C.bluePale, borderRadius: 8, padding: "6px 0" }}>👉 Lado Direito</div>
+        <div style={{ textAlign: "center", fontSize: 13, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 8, padding: "6px 0" }}>👈 Lado Esquerdo</div>
       </div>
 
       {/* Prateleiras — de cima pra baixo (4 → 1) */}
@@ -402,7 +402,7 @@ function AutoclaveAvaliar({ ciclos, setCiclos, cicloAvaliando, setCicloAvaliando
         {atual.paineis.map((p, i) => {
           const bgColor = p.resultado === "aprovado" ? C.successLight : p.resultado === "reprovado" ? C.dangerLight : C.gray;
           const bdColor = p.resultado === "aprovado" ? C.success : p.resultado === "reprovado" ? C.danger : C.grayMid;
-          const pos = p.posicao ? `P${p.posicao.prateleira} · ${p.posicao.lado === "porta" ? "Porta" : "Fundo"}` : null;
+          const pos = p.posicao ? `P${p.posicao.prateleira} · ${p.posicao.lado === "porta" ? "Direito" : "Esquerdo"}` : null;
           return (
             <div key={i} style={{ background: bgColor, borderRadius: 12, padding: "12px 16px", border: `1.5px solid ${bdColor}` }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
