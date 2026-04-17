@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend, PieChart, Pie, Cell } from "recharts";
 
 const C = {
   blue: "#003A8C", blueLight: "#0057D9", bluePale: "#E8F0FB",
@@ -32,6 +32,78 @@ const MOCK_PAINEIS = [
   { codigo: "35002459", data: "10/04/2025", turno: "1º", intervalo: "10h → 11h", tipo: "novo", status: "aprovado", defeito: null, descricaoRetrabalho: null, motivoRetrabalho: null, amostras: 3, matricula: "3789" },
 ];
 
+// Gera dados históricos realistas para analytics
+function gerarHistoricoMock() {
+  const ciclos = [];
+  const hoje = new Date();
+  let codBase = 35002500;
+
+  // 14 dias de histórico: 16 painéis/ciclo, com padrão de rejeição maior em P2
+  for (let d = 13; d >= 1; d--) {
+    const data = new Date(hoje); data.setDate(hoje.getDate() - d);
+    const ret = new Date(data); ret.setDate(data.getDate() + 1);
+    const fds = data.getDay() === 6; // sábado
+    const qtd = fds ? 24 : 16;
+    const painPorSlot = fds ? 3 : 2;
+
+    const paineis = [];
+    const carrinho = {};
+    [1,2,3,4].forEach(p => ["porta","fundo"].forEach(l => { carrinho[`${p}-${l}`] = [null,null,null]; }));
+
+    let slotIdx = 0;
+    for (let p = 1; p <= 4; p++) {
+      for (const lado of ["porta","fundo"]) {
+        for (let s = 0; s < painPorSlot; s++) {
+          const cod = String(codBase++);
+          // Taxa de rejeição: P2 tem mais rejeição, P4 (topo) também, densidade 3 piora muito
+          let probReject = 0.08; // baseline 8%
+          if (p === 2) probReject = 0.22; // P2 prateleira problemática
+          if (p === 4) probReject = 0.15; // P4 topo
+          if (painPorSlot === 3) probReject *= 1.8; // densidade alta piora
+          const reject = Math.random() < probReject;
+          const defeito = reject ? (Math.random() < 0.6 ? "dobras" : "mole") : null;
+          const resultado = reject ? "reprovado" : "aprovado";
+          const reprocesso = Math.random() < 0.1;
+
+          paineis.push({ codigo: cod, reprocesso, resultado, defeito, posicao: { prateleira: p, lado, slot: s } });
+          carrinho[`${p}-${lado}`][s] = cod;
+          slotIdx++;
+        }
+      }
+    }
+
+    ciclos.push({
+      id: `C${String(ciclos.length + 1).padStart(3,"0")}`,
+      dataEnvio: data.toLocaleDateString("pt-BR"),
+      dataRetorno: ret.toLocaleDateString("pt-BR"),
+      matricula: "3789", fimDeSemana: fds, observacao: null, avaliado: true,
+      paineis, carrinho,
+    });
+  }
+
+  // Ciclo de hoje (24 painéis, não avaliado ainda) — caso real que o user comentou
+  const hojeCiclo = {
+    id: `C${String(ciclos.length + 1).padStart(3,"0")}`,
+    dataEnvio: hoje.toLocaleDateString("pt-BR"),
+    dataRetorno: new Date(hoje.getTime() + 86400000).toLocaleDateString("pt-BR"),
+    matricula: "3789", fimDeSemana: false, observacao: "Teste com 24 painéis", avaliado: false,
+    paineis: [], carrinho: {},
+  };
+  [1,2,3,4].forEach(p => ["porta","fundo"].forEach(l => { hojeCiclo.carrinho[`${p}-${l}`] = [null,null,null]; }));
+  for (let p = 1; p <= 4; p++) {
+    for (const lado of ["porta","fundo"]) {
+      for (let s = 0; s < 3; s++) {
+        const cod = String(codBase++);
+        hojeCiclo.paineis.push({ codigo: cod, reprocesso: false, resultado: null, defeito: null, posicao: { prateleira: p, lado, slot: s } });
+        hojeCiclo.carrinho[`${p}-${lado}`][s] = cod;
+      }
+    }
+  }
+  ciclos.push(hojeCiclo);
+
+  return ciclos;
+}
+
 // Estrutura do carrinho: 4 prateleiras x 2 lados x 3 slots
 function carrinhoVazio() {
   const c = {};
@@ -43,28 +115,7 @@ function carrinhoVazio() {
   return c;
 }
 
-const MOCK_CICLOS = [
-  {
-    id: "C001", dataEnvio: "10/04/2025", dataRetorno: "11/04/2025",
-    matricula: "3789", fimDeSemana: false, observacao: null, avaliado: true,
-    paineis: [
-      { codigo: "35002456", reprocesso: false, resultado: "aprovado", defeito: null },
-      { codigo: "35002457", reprocesso: false, resultado: "reprovado", defeito: "dobras" },
-      { codigo: "35002458", reprocesso: true, resultado: "aprovado", defeito: null },
-      { codigo: "35002459", reprocesso: false, resultado: "aprovado", defeito: null },
-      { codigo: "35002460", reprocesso: false, resultado: "reprovado", defeito: "mole" },
-    ],
-  },
-  {
-    id: "C002", dataEnvio: "11/04/2025", dataRetorno: "12/04/2025",
-    matricula: "3789", fimDeSemana: false, observacao: null, avaliado: false,
-    paineis: [
-      { codigo: "35002461", reprocesso: false, resultado: null, defeito: null },
-      { codigo: "35002462", reprocesso: false, resultado: null, defeito: null },
-      { codigo: "35002463", reprocesso: true, resultado: null, defeito: null },
-    ],
-  },
-];
+const MOCK_CICLOS = gerarHistoricoMock();
 
 const GRAFICO_DIA = [
   { hora: "07-08h", aprovados: 5, reprovados: 1 },
@@ -247,6 +298,217 @@ function Carrinho({ carrinho, setCarrinho, soLeitura, resultados }) {
   );
 }
 
+
+function Analytics({ ciclos }) {
+  const avaliados = ciclos.filter(c => c.avaliado);
+
+  // 1. Taxa por prateleira
+  const porPrateleira = [1,2,3,4].map(p => {
+    const paineis = avaliados.flatMap(c => c.paineis.filter(pn => pn.posicao && pn.posicao.prateleira === p));
+    const aprov = paineis.filter(pn => pn.resultado === "aprovado").length;
+    const total = paineis.length;
+    const taxa = total > 0 ? Math.round((aprov / total) * 100) : 0;
+    return { nome: `P${p}`, taxa, aprov, reprov: total - aprov, total };
+  });
+
+  // 2. Taxa por lado
+  const porLado = ["porta","fundo"].map(l => {
+    const paineis = avaliados.flatMap(c => c.paineis.filter(pn => pn.posicao && pn.posicao.lado === l));
+    const aprov = paineis.filter(pn => pn.resultado === "aprovado").length;
+    const total = paineis.length;
+    const taxa = total > 0 ? Math.round((aprov / total) * 100) : 0;
+    return { nome: l === "porta" ? "Direito" : "Esquerdo", taxa, aprov, reprov: total - aprov, total };
+  });
+
+  // 3. Taxa por densidade (painéis por espaço)
+  const densidades = {};
+  avaliados.forEach(c => {
+    if (!c.carrinho) return;
+    Object.values(c.carrinho).forEach(slots => {
+      const preenchidos = slots.filter(Boolean).length;
+      if (preenchidos === 0) return;
+      if (!densidades[preenchidos]) densidades[preenchidos] = { aprov: 0, total: 0 };
+      slots.forEach(cod => {
+        if (!cod) return;
+        const pn = c.paineis.find(p => p.codigo === cod);
+        if (!pn) return;
+        densidades[preenchidos].total++;
+        if (pn.resultado === "aprovado") densidades[preenchidos].aprov++;
+      });
+    });
+  });
+  const porDensidade = Object.entries(densidades).map(([k, v]) => ({
+    nome: `${k} painel${k > 1 ? "es" : ""} / espaço`,
+    taxa: v.total > 0 ? Math.round((v.aprov / v.total) * 100) : 0,
+    aprov: v.aprov, reprov: v.total - v.aprov, total: v.total,
+  })).sort((a, b) => Number(a.nome[0]) - Number(b.nome[0]));
+
+  // 4. Evolução diária (yield por dia)
+  const porDia = avaliados.map(c => {
+    const aprov = c.paineis.filter(p => p.resultado === "aprovado").length;
+    const total = c.paineis.length;
+    return {
+      dia: c.dataEnvio.substring(0, 5),
+      yield: total > 0 ? Math.round((aprov / total) * 100) : 0,
+      aprovados: aprov,
+      reprovados: total - aprov,
+      fds: c.fimDeSemana,
+    };
+  });
+
+  // 5. Defeitos — dobras vs mole
+  const todosPaineis = avaliados.flatMap(c => c.paineis);
+  const dobras = todosPaineis.filter(p => p.defeito === "dobras").length;
+  const mole = todosPaineis.filter(p => p.defeito === "mole").length;
+  const totalAprov = todosPaineis.filter(p => p.resultado === "aprovado").length;
+  const defeitosPie = [
+    { name: "Aprovados", valor: totalAprov, cor: C.success },
+    { name: "Dobras", valor: dobras, cor: C.danger },
+    { name: "Mole", valor: mole, cor: C.warning },
+  ];
+
+  // 6. Totais gerais
+  const totalPaineis = todosPaineis.length;
+  const totalAprovados = totalAprov;
+  const totalReprovados = totalPaineis - totalAprovados;
+  const yieldGeral = totalPaineis > 0 ? Math.round((totalAprovados / totalPaineis) * 100) : 0;
+  const totalCiclos = avaliados.length;
+
+  // 7. Insight automático — pior prateleira
+  const piorPrat = [...porPrateleira].sort((a, b) => a.taxa - b.taxa)[0];
+  const melhorPrat = [...porPrateleira].sort((a, b) => b.taxa - a.taxa)[0];
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {/* KPIs principais */}
+      <div className="card">
+        <div style={{ fontSize: 13, color: C.grayDark, fontWeight: 500, marginBottom: 4 }}>Yield Geral do Setor</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 40, fontWeight: 700, color: yieldGeral >= 85 ? C.success : yieldGeral >= 70 ? C.warning : C.danger }}>{yieldGeral}%</div>
+          <div style={{ fontSize: 13, color: C.grayDark }}>{totalAprovados} de {totalPaineis} painéis • {totalCiclos} ciclos</div>
+        </div>
+        <div style={{ marginTop: 14, padding: "10px 14px", background: C.bluePale, borderRadius: 10, fontSize: 13, color: C.text }}>
+          <strong style={{ color: C.blue }}>💡 Insight:</strong> Prateleira <strong>{piorPrat.nome}</strong> tem a menor taxa de aprovação ({piorPrat.taxa}%), enquanto <strong>{melhorPrat.nome}</strong> tem a maior ({melhorPrat.taxa}%). Diferença de {melhorPrat.taxa - piorPrat.taxa} pontos percentuais sugere problema de distribuição de calor.
+        </div>
+      </div>
+
+      {/* Análise por prateleira */}
+      <div className="card">
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação por Prateleira</div>
+        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Identifica problemas de distribuição de calor no carrinho</div>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={porPrateleira}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.gray} />
+            <XAxis dataKey="nome" tick={{ fontSize: 12, fill: C.grayDark }} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: C.grayDark }} axisLine={false} tickLine={false} unit="%" />
+            <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
+            <Bar dataKey="taxa" name="Taxa Aprovação (%)" radius={[6,6,0,0]}>
+              {porPrateleira.map((entry, i) => (
+                <Cell key={i} fill={entry.taxa >= 85 ? C.success : entry.taxa >= 70 ? C.warning : C.danger} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Por Lado */}
+      <div className="card">
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação por Lado</div>
+        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Compara performance entre lados do carrinho</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {porLado.map(l => (
+            <div key={l.nome} style={{ background: C.gray, borderRadius: 12, padding: 16, textAlign: "center" }}>
+              <div style={{ fontSize: 13, color: C.grayDark, marginBottom: 4 }}>Lado {l.nome}</div>
+              <div style={{ fontSize: 28, fontWeight: 700, color: l.taxa >= 85 ? C.success : l.taxa >= 70 ? C.warning : C.danger }}>{l.taxa}%</div>
+              <div style={{ fontSize: 11, color: C.grayDark, marginTop: 4 }}>{l.aprov} aprovados / {l.total} total</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Por Densidade */}
+      <div className="card">
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação por Densidade</div>
+        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Quantos painéis por espaço é o ideal?</div>
+        <ResponsiveContainer width="100%" height={200}>
+          <BarChart data={porDensidade} layout="vertical">
+            <CartesianGrid strokeDasharray="3 3" stroke={C.gray} />
+            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: C.grayDark }} axisLine={false} tickLine={false} unit="%" />
+            <YAxis type="category" dataKey="nome" tick={{ fontSize: 11, fill: C.grayDark }} axisLine={false} tickLine={false} width={120} />
+            <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
+            <Bar dataKey="taxa" radius={[0,6,6,0]}>
+              {porDensidade.map((entry, i) => (
+                <Cell key={i} fill={entry.taxa >= 85 ? C.success : entry.taxa >= 70 ? C.warning : C.danger} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Evolução diária */}
+      <div className="card">
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Evolução do Yield Diário</div>
+        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Estabilidade do processo ao longo do tempo</div>
+        <ResponsiveContainer width="100%" height={220}>
+          <LineChart data={porDia}>
+            <CartesianGrid strokeDasharray="3 3" stroke={C.gray} />
+            <XAxis dataKey="dia" tick={{ fontSize: 10, fill: C.grayDark }} axisLine={false} tickLine={false} />
+            <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: C.grayDark }} axisLine={false} tickLine={false} unit="%" />
+            <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
+            <Line type="monotone" dataKey="yield" stroke={C.agpBlue} strokeWidth={3} dot={{ fill: C.agpBlue, r: 4 }} activeDot={{ r: 6 }} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
+
+      {/* Defeitos */}
+      <div className="card">
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Distribuição de Resultados</div>
+        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Panorama geral de aprovados vs defeitos</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
+          <ResponsiveContainer width={200} height={200}>
+            <PieChart>
+              <Pie data={defeitosPie} dataKey="valor" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={45}>
+                {defeitosPie.map((e, i) => <Cell key={i} fill={e.cor} />)}
+              </Pie>
+              <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
+            </PieChart>
+          </ResponsiveContainer>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {defeitosPie.map(d => (
+              <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 14, height: 14, borderRadius: 4, background: d.cor }} />
+                <span style={{ fontSize: 13, color: C.text }}><strong>{d.valor}</strong> {d.name}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Resumo numérico */}
+      <div className="card">
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Indicadores do Período</div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          <div style={{ background: C.successLight, borderRadius: 10, padding: 14, textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.success }}>{totalAprovados}</div>
+            <div style={{ fontSize: 11, color: C.success }}>Aprovados</div>
+          </div>
+          <div style={{ background: C.dangerLight, borderRadius: 10, padding: 14, textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.danger }}>{totalReprovados}</div>
+            <div style={{ fontSize: 11, color: C.danger }}>Reprovados</div>
+          </div>
+          <div style={{ background: C.bluePale, borderRadius: 10, padding: 14, textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.blue }}>{totalCiclos}</div>
+            <div style={{ fontSize: 11, color: C.blue }}>Ciclos avaliados</div>
+          </div>
+          <div style={{ background: C.warningLight, borderRadius: 10, padding: 14, textAlign: "center" }}>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.warning }}>{dobras + mole}</div>
+            <div style={{ fontSize: 11, color: C.warning }}>Total defeitos</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function AutoclaveVisao({ ciclos, setCicloAvaliando, setAba }) {
   const tot = ciclos.reduce((s, c) => s + c.paineis.length, 0);
@@ -537,7 +799,7 @@ export default function App() {
           </div>
         </div>
         <div style={{ display: "flex", background: "rgba(0,0,0,0.15)", borderTop: "1px solid rgba(255,255,255,0.1)", overflowX: "auto" }}>
-          {[["dashboard","📊"],["registro","✏️"],["historico","📋"],["paineis","🔲"],["autoclave","🔥"]].map(([k, ic]) => (
+          {[["dashboard","📊"],["registro","✏️"],["historico","📋"],["paineis","🔲"],["autoclave","🔥"],["analytics","📈"]].map(([k, ic]) => (
             <button key={k} onClick={() => setTela(k)}
               style={{ flex: 1, background: "none", border: "none", borderBottom: tela === k ? "3px solid white" : "3px solid transparent", cursor: "pointer", padding: "10px 4px", fontFamily: "'DM Sans'", fontSize: 11, fontWeight: tela === k ? 700 : 500, color: tela === k ? "white" : "rgba(255,255,255,0.6)", whiteSpace: "nowrap" }}>
               {ic} {k.charAt(0).toUpperCase() + k.slice(1)}
@@ -979,6 +1241,9 @@ export default function App() {
             {abaAuto === "avaliar" && <AutoclaveAvaliar ciclos={ciclos} setCiclos={setCiclos} cicloAvaliando={cicloAval} setCicloAvaliando={setCicloAval} setAba={setAbaAuto} />}
           </div>
         )}
+
+        {/* ── ANALYTICS ── */}
+        {tela === "analytics" && <Analytics ciclos={ciclos} />}
 
       </div>
     </div>
