@@ -104,6 +104,10 @@ function gerarHistoricoMock() {
   return ciclos;
 }
 
+// ─── Parâmetros de negócio (ajustar quando tiver dados reais) ──────
+const CUSTO_POR_PAINEL = 2400; // R$ — custo estimado por painel reprovado
+const META_YIELD = 90; // % — meta de aprovação
+
 // Estrutura do carrinho: 4 prateleiras x 2 lados x 3 slots
 function carrinhoVazio() {
   const c = {};
@@ -378,18 +382,91 @@ function Analytics({ ciclos }) {
   const piorPrat = [...porPrateleira].sort((a, b) => a.taxa - b.taxa)[0];
   const melhorPrat = [...porPrateleira].sort((a, b) => b.taxa - a.taxa)[0];
 
+  // 8. Perda financeira
+  const perdaTotal = totalReprovados * CUSTO_POR_PAINEL;
+  const paineisSeMetaAtingida = totalPaineis > 0 ? Math.round(totalPaineis * (1 - META_YIELD / 100)) : 0;
+  const economiaSeMeta = Math.max(0, (totalReprovados - paineisSeMetaAtingida) * CUSTO_POR_PAINEL);
+  const perdaMediaDiaria = avaliados.length > 0 ? Math.round(perdaTotal / avaliados.length) : 0;
+
+  // 9. Comparativo últimos 7 dias vs 7 anteriores
+  const metade = Math.floor(avaliados.length / 2);
+  const ultimos = avaliados.slice(-Math.min(7, metade));
+  const anteriores = avaliados.slice(-Math.min(14, avaliados.length), -Math.min(7, metade));
+  const yieldPeriodo = (arr) => {
+    const t = arr.flatMap(c => c.paineis);
+    const a = t.filter(p => p.resultado === "aprovado").length;
+    return t.length > 0 ? Math.round((a / t.length) * 100) : 0;
+  };
+  const yieldUlt = yieldPeriodo(ultimos);
+  const yieldAnt = yieldPeriodo(anteriores);
+  const deltaYield = yieldUlt - yieldAnt;
+
+  // Formatador de moeda
+  const fmtBRL = (v) => `R$ ${v.toLocaleString("pt-BR")}`;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* KPIs principais */}
       <div className="card">
-        <div style={{ fontSize: 13, color: C.grayDark, fontWeight: 500, marginBottom: 4 }}>Yield Geral do Setor</div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 40, fontWeight: 700, color: yieldGeral >= 85 ? C.success : yieldGeral >= 70 ? C.warning : C.danger }}>{yieldGeral}%</div>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
+          <div style={{ fontSize: 13, color: C.grayDark, fontWeight: 500 }}>Yield Geral do Setor</div>
+          <div style={{ fontSize: 11, color: C.grayDark, background: C.gray, padding: "4px 10px", borderRadius: 6, fontWeight: 600 }}>Meta: {META_YIELD}%</div>
+        </div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
+          <div style={{ fontSize: 40, fontWeight: 700, color: yieldGeral >= META_YIELD ? C.success : yieldGeral >= 70 ? C.warning : C.danger }}>{yieldGeral}%</div>
           <div style={{ fontSize: 13, color: C.grayDark }}>{totalAprovados} de {totalPaineis} painéis • {totalCiclos} ciclos</div>
         </div>
-        <div style={{ marginTop: 14, padding: "10px 14px", background: C.bluePale, borderRadius: 10, fontSize: 13, color: C.text }}>
+
+        {/* Barra de meta */}
+        <div style={{ background: C.gray, height: 8, borderRadius: 4, overflow: "hidden", position: "relative", marginBottom: 12 }}>
+          <div style={{ background: yieldGeral >= META_YIELD ? C.success : yieldGeral >= 70 ? C.warning : C.danger, width: `${yieldGeral}%`, height: "100%", transition: "width 0.3s" }} />
+          <div style={{ position: "absolute", top: -3, left: `${META_YIELD}%`, width: 2, height: 14, background: C.text }} />
+        </div>
+
+        {/* Comparativo tendência */}
+        {ultimos.length > 0 && anteriores.length > 0 && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: deltaYield >= 0 ? C.successLight : C.dangerLight, borderRadius: 8, marginBottom: 12 }}>
+            <span style={{ fontSize: 18 }}>{deltaYield >= 0 ? "📈" : "📉"}</span>
+            <span style={{ fontSize: 13, color: deltaYield >= 0 ? C.success : C.danger, fontWeight: 600 }}>
+              {deltaYield >= 0 ? "+" : ""}{deltaYield}% vs período anterior
+            </span>
+            <span style={{ fontSize: 11, color: C.grayDark, marginLeft: "auto" }}>
+              {yieldAnt}% → {yieldUlt}%
+            </span>
+          </div>
+        )}
+
+        <div style={{ padding: "10px 14px", background: C.bluePale, borderRadius: 10, fontSize: 13, color: C.text }}>
           <strong style={{ color: C.blue }}>💡 Insight:</strong> Prateleira <strong>{piorPrat.nome}</strong> tem a menor taxa de aprovação ({piorPrat.taxa}%), enquanto <strong>{melhorPrat.nome}</strong> tem a maior ({melhorPrat.taxa}%). Diferença de {melhorPrat.taxa - piorPrat.taxa} pontos percentuais sugere problema de distribuição de calor.
         </div>
+      </div>
+
+      {/* IMPACTO FINANCEIRO */}
+      <div className="card" style={{ borderLeft: `4px solid ${C.danger}` }}>
+        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>💰 Impacto Financeiro</div>
+        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Baseado em custo médio de {fmtBRL(CUSTO_POR_PAINEL)} por painel reprovado</div>
+
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+          <div style={{ background: C.dangerLight, borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 11, color: C.danger, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Perda no período</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.danger }}>{fmtBRL(perdaTotal)}</div>
+            <div style={{ fontSize: 11, color: C.danger, marginTop: 4 }}>{totalReprovados} painéis × {fmtBRL(CUSTO_POR_PAINEL)}</div>
+          </div>
+          <div style={{ background: C.warningLight, borderRadius: 10, padding: 14 }}>
+            <div style={{ fontSize: 11, color: C.warning, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Perda média diária</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: C.warning }}>{fmtBRL(perdaMediaDiaria)}</div>
+            <div style={{ fontSize: 11, color: C.warning, marginTop: 4 }}>Em {avaliados.length} ciclo(s)</div>
+          </div>
+        </div>
+
+        {economiaSeMeta > 0 && (
+          <div style={{ background: C.successLight, borderRadius: 10, padding: 14, borderLeft: `3px solid ${C.success}` }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: C.success, marginBottom: 4 }}>🎯 Oportunidade de economia</div>
+            <div style={{ fontSize: 14, color: C.text }}>
+              Se atingirmos a meta de <strong>{META_YIELD}% de yield</strong>, a economia seria de <strong style={{ color: C.success }}>{fmtBRL(economiaSeMeta)}</strong> no período.
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Análise por prateleira */}
@@ -448,7 +525,7 @@ function Analytics({ ciclos }) {
       {/* Evolução diária */}
       <div className="card">
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Evolução do Yield Diário</div>
-        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Estabilidade do processo ao longo do tempo</div>
+        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Estabilidade do processo ao longo do tempo • Meta: {META_YIELD}%</div>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={porDia}>
             <CartesianGrid strokeDasharray="3 3" stroke={C.gray} />
@@ -456,6 +533,7 @@ function Analytics({ ciclos }) {
             <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: C.grayDark }} axisLine={false} tickLine={false} unit="%" />
             <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
             <Line type="monotone" dataKey="yield" stroke={C.agpBlue} strokeWidth={3} dot={{ fill: C.agpBlue, r: 4 }} activeDot={{ r: 6 }} />
+            <Line type="monotone" dataKey={() => META_YIELD} stroke={C.success} strokeWidth={2} strokeDasharray="5 5" dot={false} name="Meta" />
           </LineChart>
         </ResponsiveContainer>
       </div>
