@@ -1,15 +1,7 @@
 import { useState } from "react";
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend, PieChart, Pie, Cell } from "recharts";
-
-const C = {
-  blue: "#003A8C", blueLight: "#0057D9", bluePale: "#E8F0FB",
-  gray: "#F4F6FA", grayMid: "#C8D0DE", grayDark: "#6B7A99",
-  success: "#0A7A4B", successLight: "#E6F4EF",
-  danger: "#C0392B", dangerLight: "#FDECEA",
-  warning: "#D97706", warningLight: "#FFF7ED",
-  text: "#0D1B3E", purple: "#6B21A8", purpleLight: "#F3E8FF",
-  agpBlue: "#4A7FA5",
-};
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Legend } from "recharts";
+import { C } from "./theme";
+import { AutoclaveModulo, Analytics, useCiclos, historicoAutoclave, NOME_LADO, ultimoVacuo } from "./autoclave";
 
 const INTERVALOS = [
   "07h → 08h","08h → 09h","09h → 10h","10h → 11h",
@@ -32,94 +24,6 @@ const MOCK_PAINEIS = [
   { codigo: "35002459", data: "10/04/2025", turno: "1º", intervalo: "10h → 11h", tipo: "novo", status: "aprovado", defeito: null, descricaoRetrabalho: null, motivoRetrabalho: null, amostras: 3, matricula: "3789" },
 ];
 
-// Gera dados históricos realistas para analytics
-function gerarHistoricoMock() {
-  const ciclos = [];
-  const hoje = new Date();
-  let codBase = 35002500;
-
-  // 14 dias de histórico: 16 painéis/ciclo, com padrão de rejeição maior em P2
-  for (let d = 13; d >= 1; d--) {
-    const data = new Date(hoje); data.setDate(hoje.getDate() - d);
-    const ret = new Date(data); ret.setDate(data.getDate() + 1);
-    const fds = data.getDay() === 6; // sábado
-    const qtd = fds ? 24 : 16;
-    const painPorSlot = fds ? 3 : 2;
-
-    const paineis = [];
-    const carrinho = {};
-    [1,2,3,4].forEach(p => ["porta","fundo"].forEach(l => { carrinho[`${p}-${l}`] = [null,null,null]; }));
-
-    let slotIdx = 0;
-    for (let p = 1; p <= 4; p++) {
-      for (const lado of ["porta","fundo"]) {
-        for (let s = 0; s < painPorSlot; s++) {
-          const cod = String(codBase++);
-          // Taxa de rejeição: P2 tem mais rejeição, P4 (topo) também, densidade 3 piora muito
-          let probReject = 0.08; // baseline 8%
-          if (p === 2) probReject = 0.22; // P2 prateleira problemática
-          if (p === 4) probReject = 0.15; // P4 topo
-          if (painPorSlot === 3) probReject *= 1.8; // densidade alta piora
-          const reject = Math.random() < probReject;
-          const defeito = reject ? (Math.random() < 0.6 ? "dobras" : "mole") : null;
-          const resultado = reject ? "reprovado" : "aprovado";
-          const reprocesso = Math.random() < 0.1;
-
-          paineis.push({ codigo: cod, reprocesso, resultado, defeito, posicao: { prateleira: p, lado, slot: s } });
-          carrinho[`${p}-${lado}`][s] = cod;
-          slotIdx++;
-        }
-      }
-    }
-
-    ciclos.push({
-      id: `C${String(ciclos.length + 1).padStart(3,"0")}`,
-      dataEnvio: data.toLocaleDateString("pt-BR"),
-      dataRetorno: ret.toLocaleDateString("pt-BR"),
-      matricula: "3789", fimDeSemana: fds, observacao: null, avaliado: true,
-      paineis, carrinho,
-    });
-  }
-
-  // Ciclo de hoje (24 painéis, não avaliado ainda) — caso real que o user comentou
-  const hojeCiclo = {
-    id: `C${String(ciclos.length + 1).padStart(3,"0")}`,
-    dataEnvio: hoje.toLocaleDateString("pt-BR"),
-    dataRetorno: new Date(hoje.getTime() + 86400000).toLocaleDateString("pt-BR"),
-    matricula: "3789", fimDeSemana: false, observacao: "Teste com 24 painéis", avaliado: false,
-    paineis: [], carrinho: {},
-  };
-  [1,2,3,4].forEach(p => ["porta","fundo"].forEach(l => { hojeCiclo.carrinho[`${p}-${l}`] = [null,null,null]; }));
-  for (let p = 1; p <= 4; p++) {
-    for (const lado of ["porta","fundo"]) {
-      for (let s = 0; s < 3; s++) {
-        const cod = String(codBase++);
-        hojeCiclo.paineis.push({ codigo: cod, reprocesso: false, resultado: null, defeito: null, posicao: { prateleira: p, lado, slot: s } });
-        hojeCiclo.carrinho[`${p}-${lado}`][s] = cod;
-      }
-    }
-  }
-  ciclos.push(hojeCiclo);
-
-  return ciclos;
-}
-
-// ─── Parâmetros de negócio (ajustar quando tiver dados reais) ──────
-const CUSTO_POR_PAINEL = 2400; // R$ — custo estimado por painel reprovado
-const META_YIELD = 90; // % — meta de aprovação
-
-// Estrutura do carrinho: 4 prateleiras x 2 lados x 3 slots
-function carrinhoVazio() {
-  const c = {};
-  [1,2,3,4].forEach(p => {
-    ["porta","fundo"].forEach(l => {
-      c[`${p}-${l}`] = [null, null, null]; // até 3 painéis por espaço
-    });
-  });
-  return c;
-}
-
-const MOCK_CICLOS = gerarHistoricoMock();
 
 const GRAFICO_DIA = [
   { hora: "07-08h", aprovados: 5, reprovados: 1 },
@@ -201,589 +105,6 @@ function CardNum({ label, valor, cor }) {
   );
 }
 
-function Carrinho({ carrinho, setCarrinho, soLeitura, resultados }) {
-  const [editando, setEditando] = useState(null); // "p-lado-slot"
-  const [inputCod, setInputCod] = useState("");
-
-  function setCodigo(prat, lado, slot, valor) {
-    const key = `${prat}-${lado}`;
-    const slots = [...(carrinho[key] || [null,null,null])];
-    slots[slot] = valor || null;
-    setCarrinho(prev => ({ ...prev, [key]: slots }));
-  }
-
-  function getResultado(codigo) {
-    if (!resultados || !codigo) return null;
-    return resultados[codigo] || null;
-  }
-
-  function corResultado(res) {
-    if (!res) return C.gray;
-    if (res.resultado === "aprovado") return C.successLight;
-    if (res.resultado === "reprovado") return C.dangerLight;
-    return C.gray;
-  }
-
-  function bordaResultado(res) {
-    if (!res) return C.grayMid;
-    if (res.resultado === "aprovado") return C.success;
-    if (res.resultado === "reprovado") return C.danger;
-    return C.grayMid;
-  }
-
-  return (
-    <div style={{ background: C.gray, borderRadius: 14, padding: 12 }}>
-      {/* Header */}
-      <div style={{ display: "grid", gridTemplateColumns: "44px 1fr 1fr", gap: 6, marginBottom: 8 }}>
-        <div />
-        <div style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: C.blue, background: C.bluePale, borderRadius: 6, padding: "5px 0" }}>Lado Direito</div>
-        <div style={{ textAlign: "center", fontSize: 12, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 6, padding: "5px 0" }}>Lado Esquerdo</div>
-      </div>
-
-      {/* Prateleiras — de cima pra baixo (4 → 1) */}
-      {[4,3,2,1].map(prat => (
-        <div key={prat} style={{ display: "grid", gridTemplateColumns: "44px 1fr 1fr", gap: 6, marginBottom: 6 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: C.grayDark, background: "white", borderRadius: 6 }}>
-            P{prat}
-          </div>
-          {["porta","fundo"].map(lado => {
-            const key = `${prat}-${lado}`;
-            const slots = carrinho[key] || [null,null,null];
-            const preenchidos = slots.filter(s => s !== null).length;
-            return (
-              <div key={lado} style={{ background: "white", borderRadius: 8, padding: "6px", border: `1.5px solid ${C.grayMid}`, display: "flex", flexDirection: "column", gap: 3 }}>
-                {slots.map((cod, si) => {
-                  const res = getResultado(cod);
-                  const eKey = `${prat}-${lado}-${si}`;
-                  const isEditando = editando === eKey;
-                  return (
-                    <div key={si} style={{ background: corResultado(res), border: `1px solid ${bordaResultado(res)}`, borderRadius: 6, padding: "3px 6px", height: 26, display: "flex", alignItems: "center", justifyContent: "space-between", gap: 2 }}>
-                      {isEditando && !soLeitura ? (
-                        <input
-                          autoFocus
-                          value={inputCod}
-                          maxLength={8}
-                          onChange={e => setInputCod(e.target.value.replace(/\D/g,""))}
-                          onBlur={() => { setCodigo(prat, lado, si, inputCod); setEditando(null); setInputCod(""); }}
-                          onKeyDown={e => { if (e.key === "Enter") { setCodigo(prat, lado, si, inputCod); setEditando(null); setInputCod(""); } if (e.key === "Escape") { setEditando(null); setInputCod(""); } }}
-                          style={{ width: "100%", border: "none", background: "transparent", fontFamily: "'DM Mono'", fontSize: 11, fontWeight: 600, outline: "none", color: C.text }}
-                          placeholder="00000000"
-                        />
-                      ) : (
-                        <span
-                          onClick={() => { if (!soLeitura) { setEditando(eKey); setInputCod(cod || ""); } }}
-                          style={{ fontFamily: "'DM Mono'", fontSize: 11, fontWeight: cod ? 600 : 400, color: cod ? C.blue : C.grayMid, cursor: soLeitura ? "default" : "pointer", flex: 1, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                          {cod || (soLeitura ? "—" : "· · ·")}
-                        </span>
-                      )}
-                      {cod && !soLeitura && !isEditando && (
-                        <button onClick={() => setCodigo(prat, lado, si, null)}
-                          style={{ background: "none", border: "none", color: C.danger, cursor: "pointer", fontSize: 11, fontWeight: 700, padding: 0, lineHeight: 1 }}>✕</button>
-                      )}
-                      {cod && res && res.resultado && (
-                        <span style={{ fontSize: 10, fontWeight: 700, color: res.resultado === "aprovado" ? C.success : C.danger, flexShrink: 0 }}>
-                          {res.resultado === "aprovado" ? "✓" : "✗"}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
-                <div style={{ fontSize: 10, color: C.grayDark, textAlign: "right" }}>{preenchidos}/3</div>
-              </div>
-            );
-          })}
-        </div>
-      ))}
-
-      <div style={{ fontSize: 12, color: C.grayDark, textAlign: "center", marginTop: 6 }}>
-        Total: <strong>{Object.values(carrinho).flat().filter(Boolean).length} painel(is)</strong>
-      </div>
-    </div>
-  );
-}
-
-
-function Analytics({ ciclos }) {
-  const avaliados = ciclos.filter(c => c.avaliado);
-
-  // 1. Taxa por prateleira
-  const porPrateleira = [1,2,3,4].map(p => {
-    const paineis = avaliados.flatMap(c => c.paineis.filter(pn => pn.posicao && pn.posicao.prateleira === p));
-    const aprov = paineis.filter(pn => pn.resultado === "aprovado").length;
-    const total = paineis.length;
-    const taxa = total > 0 ? Math.round((aprov / total) * 100) : 0;
-    return { nome: `P${p}`, taxa, aprov, reprov: total - aprov, total };
-  });
-
-  // 2. Taxa por lado
-  const porLado = ["porta","fundo"].map(l => {
-    const paineis = avaliados.flatMap(c => c.paineis.filter(pn => pn.posicao && pn.posicao.lado === l));
-    const aprov = paineis.filter(pn => pn.resultado === "aprovado").length;
-    const total = paineis.length;
-    const taxa = total > 0 ? Math.round((aprov / total) * 100) : 0;
-    return { nome: l === "porta" ? "Direito" : "Esquerdo", taxa, aprov, reprov: total - aprov, total };
-  });
-
-  // 3. Taxa por densidade (painéis por espaço)
-  const densidades = {};
-  avaliados.forEach(c => {
-    if (!c.carrinho) return;
-    Object.values(c.carrinho).forEach(slots => {
-      const preenchidos = slots.filter(Boolean).length;
-      if (preenchidos === 0) return;
-      if (!densidades[preenchidos]) densidades[preenchidos] = { aprov: 0, total: 0 };
-      slots.forEach(cod => {
-        if (!cod) return;
-        const pn = c.paineis.find(p => p.codigo === cod);
-        if (!pn) return;
-        densidades[preenchidos].total++;
-        if (pn.resultado === "aprovado") densidades[preenchidos].aprov++;
-      });
-    });
-  });
-  const porDensidade = Object.entries(densidades).map(([k, v]) => ({
-    nome: `${k} painel${k > 1 ? "es" : ""} / espaço`,
-    taxa: v.total > 0 ? Math.round((v.aprov / v.total) * 100) : 0,
-    aprov: v.aprov, reprov: v.total - v.aprov, total: v.total,
-  })).sort((a, b) => Number(a.nome[0]) - Number(b.nome[0]));
-
-  // 4. Evolução diária (yield por dia)
-  const porDia = avaliados.map(c => {
-    const aprov = c.paineis.filter(p => p.resultado === "aprovado").length;
-    const total = c.paineis.length;
-    return {
-      dia: c.dataEnvio.substring(0, 5),
-      yield: total > 0 ? Math.round((aprov / total) * 100) : 0,
-      aprovados: aprov,
-      reprovados: total - aprov,
-      fds: c.fimDeSemana,
-    };
-  });
-
-  // 5. Defeitos — dobras vs mole
-  const todosPaineis = avaliados.flatMap(c => c.paineis);
-  const dobras = todosPaineis.filter(p => p.defeito === "dobras").length;
-  const mole = todosPaineis.filter(p => p.defeito === "mole").length;
-  const totalAprov = todosPaineis.filter(p => p.resultado === "aprovado").length;
-  const defeitosPie = [
-    { name: "Aprovados", valor: totalAprov, cor: C.success },
-    { name: "Dobras", valor: dobras, cor: C.danger },
-    { name: "Mole", valor: mole, cor: C.warning },
-  ];
-
-  // 6. Totais gerais
-  const totalPaineis = todosPaineis.length;
-  const totalAprovados = totalAprov;
-  const totalReprovados = totalPaineis - totalAprovados;
-  const yieldGeral = totalPaineis > 0 ? Math.round((totalAprovados / totalPaineis) * 100) : 0;
-  const totalCiclos = avaliados.length;
-
-  // 7. Insight automático — pior prateleira
-  const piorPrat = [...porPrateleira].sort((a, b) => a.taxa - b.taxa)[0];
-  const melhorPrat = [...porPrateleira].sort((a, b) => b.taxa - a.taxa)[0];
-
-  // 8. Perda financeira
-  const perdaTotal = totalReprovados * CUSTO_POR_PAINEL;
-  const paineisSeMetaAtingida = totalPaineis > 0 ? Math.round(totalPaineis * (1 - META_YIELD / 100)) : 0;
-  const economiaSeMeta = Math.max(0, (totalReprovados - paineisSeMetaAtingida) * CUSTO_POR_PAINEL);
-  const perdaMediaDiaria = avaliados.length > 0 ? Math.round(perdaTotal / avaliados.length) : 0;
-
-  // 9. Comparativo últimos 7 dias vs 7 anteriores
-  const metade = Math.floor(avaliados.length / 2);
-  const ultimos = avaliados.slice(-Math.min(7, metade));
-  const anteriores = avaliados.slice(-Math.min(14, avaliados.length), -Math.min(7, metade));
-  const yieldPeriodo = (arr) => {
-    const t = arr.flatMap(c => c.paineis);
-    const a = t.filter(p => p.resultado === "aprovado").length;
-    return t.length > 0 ? Math.round((a / t.length) * 100) : 0;
-  };
-  const yieldUlt = yieldPeriodo(ultimos);
-  const yieldAnt = yieldPeriodo(anteriores);
-  const deltaYield = yieldUlt - yieldAnt;
-
-  // Formatador de moeda
-  const fmtBRL = (v) => `R$ ${v.toLocaleString("pt-BR")}`;
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* KPIs principais */}
-      <div className="card">
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8, flexWrap: "wrap", gap: 8 }}>
-          <div style={{ fontSize: 13, color: C.grayDark, fontWeight: 500 }}>Yield Geral do Setor</div>
-          <div style={{ fontSize: 11, color: C.grayDark, background: C.gray, padding: "4px 10px", borderRadius: 6, fontWeight: 600 }}>Meta: {META_YIELD}%</div>
-        </div>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap", marginBottom: 10 }}>
-          <div style={{ fontSize: 40, fontWeight: 700, color: yieldGeral >= META_YIELD ? C.success : yieldGeral >= 70 ? C.warning : C.danger }}>{yieldGeral}%</div>
-          <div style={{ fontSize: 13, color: C.grayDark }}>{totalAprovados} de {totalPaineis} painéis • {totalCiclos} ciclos</div>
-        </div>
-
-        {/* Barra de meta */}
-        <div style={{ background: C.gray, height: 8, borderRadius: 4, overflow: "hidden", position: "relative", marginBottom: 12 }}>
-          <div style={{ background: yieldGeral >= META_YIELD ? C.success : yieldGeral >= 70 ? C.warning : C.danger, width: `${yieldGeral}%`, height: "100%", transition: "width 0.3s" }} />
-          <div style={{ position: "absolute", top: -3, left: `${META_YIELD}%`, width: 2, height: 14, background: C.text }} />
-        </div>
-
-        {/* Comparativo tendência */}
-        {ultimos.length > 0 && anteriores.length > 0 && (
-          <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: deltaYield >= 0 ? C.successLight : C.dangerLight, borderRadius: 8, marginBottom: 12 }}>
-            <span style={{ fontSize: 18 }}>{deltaYield >= 0 ? "📈" : "📉"}</span>
-            <span style={{ fontSize: 13, color: deltaYield >= 0 ? C.success : C.danger, fontWeight: 600 }}>
-              {deltaYield >= 0 ? "+" : ""}{deltaYield}% vs período anterior
-            </span>
-            <span style={{ fontSize: 11, color: C.grayDark, marginLeft: "auto" }}>
-              {yieldAnt}% → {yieldUlt}%
-            </span>
-          </div>
-        )}
-
-        <div style={{ padding: "10px 14px", background: C.bluePale, borderRadius: 10, fontSize: 13, color: C.text }}>
-          <strong style={{ color: C.blue }}>💡 Insight:</strong> Prateleira <strong>{piorPrat.nome}</strong> tem a menor taxa de aprovação ({piorPrat.taxa}%), enquanto <strong>{melhorPrat.nome}</strong> tem a maior ({melhorPrat.taxa}%). Diferença de {melhorPrat.taxa - piorPrat.taxa} pontos percentuais sugere problema de distribuição de calor.
-        </div>
-      </div>
-
-      {/* IMPACTO FINANCEIRO */}
-      <div className="card" style={{ borderLeft: `4px solid ${C.danger}` }}>
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>💰 Impacto Financeiro</div>
-        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Baseado em custo médio de {fmtBRL(CUSTO_POR_PAINEL)} por painel reprovado</div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
-          <div style={{ background: C.dangerLight, borderRadius: 10, padding: 14 }}>
-            <div style={{ fontSize: 11, color: C.danger, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Perda no período</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.danger }}>{fmtBRL(perdaTotal)}</div>
-            <div style={{ fontSize: 11, color: C.danger, marginTop: 4 }}>{totalReprovados} painéis × {fmtBRL(CUSTO_POR_PAINEL)}</div>
-          </div>
-          <div style={{ background: C.warningLight, borderRadius: 10, padding: 14 }}>
-            <div style={{ fontSize: 11, color: C.warning, fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 4 }}>Perda média diária</div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.warning }}>{fmtBRL(perdaMediaDiaria)}</div>
-            <div style={{ fontSize: 11, color: C.warning, marginTop: 4 }}>Em {avaliados.length} ciclo(s)</div>
-          </div>
-        </div>
-
-        {economiaSeMeta > 0 && (
-          <div style={{ background: C.successLight, borderRadius: 10, padding: 14, borderLeft: `3px solid ${C.success}` }}>
-            <div style={{ fontSize: 12, fontWeight: 600, color: C.success, marginBottom: 4 }}>🎯 Oportunidade de economia</div>
-            <div style={{ fontSize: 14, color: C.text }}>
-              Se atingirmos a meta de <strong>{META_YIELD}% de yield</strong>, a economia seria de <strong style={{ color: C.success }}>{fmtBRL(economiaSeMeta)}</strong> no período.
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Análise por prateleira */}
-      <div className="card">
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação por Prateleira</div>
-        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Identifica problemas de distribuição de calor no carrinho</div>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={porPrateleira}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.gray} />
-            <XAxis dataKey="nome" tick={{ fontSize: 12, fill: C.grayDark }} axisLine={false} tickLine={false} />
-            <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: C.grayDark }} axisLine={false} tickLine={false} unit="%" />
-            <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
-            <Bar dataKey="taxa" name="Taxa Aprovação (%)" radius={[6,6,0,0]}>
-              {porPrateleira.map((entry, i) => (
-                <Cell key={i} fill={entry.taxa >= 85 ? C.success : entry.taxa >= 70 ? C.warning : C.danger} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Por Lado */}
-      <div className="card">
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação por Lado</div>
-        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Compara performance entre lados do carrinho</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {porLado.map(l => (
-            <div key={l.nome} style={{ background: C.gray, borderRadius: 12, padding: 16, textAlign: "center" }}>
-              <div style={{ fontSize: 13, color: C.grayDark, marginBottom: 4 }}>Lado {l.nome}</div>
-              <div style={{ fontSize: 28, fontWeight: 700, color: l.taxa >= 85 ? C.success : l.taxa >= 70 ? C.warning : C.danger }}>{l.taxa}%</div>
-              <div style={{ fontSize: 11, color: C.grayDark, marginTop: 4 }}>{l.aprov} aprovados / {l.total} total</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Por Densidade */}
-      <div className="card">
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação por Densidade</div>
-        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Quantos painéis por espaço é o ideal?</div>
-        <ResponsiveContainer width="100%" height={200}>
-          <BarChart data={porDensidade} layout="vertical">
-            <CartesianGrid strokeDasharray="3 3" stroke={C.gray} />
-            <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11, fill: C.grayDark }} axisLine={false} tickLine={false} unit="%" />
-            <YAxis type="category" dataKey="nome" tick={{ fontSize: 11, fill: C.grayDark }} axisLine={false} tickLine={false} width={120} />
-            <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
-            <Bar dataKey="taxa" radius={[0,6,6,0]}>
-              {porDensidade.map((entry, i) => (
-                <Cell key={i} fill={entry.taxa >= 85 ? C.success : entry.taxa >= 70 ? C.warning : C.danger} />
-              ))}
-            </Bar>
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Evolução diária */}
-      <div className="card">
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Evolução do Yield Diário</div>
-        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Estabilidade do processo ao longo do tempo • Meta: {META_YIELD}%</div>
-        <ResponsiveContainer width="100%" height={220}>
-          <LineChart data={porDia}>
-            <CartesianGrid strokeDasharray="3 3" stroke={C.gray} />
-            <XAxis dataKey="dia" tick={{ fontSize: 10, fill: C.grayDark }} axisLine={false} tickLine={false} />
-            <YAxis domain={[0, 100]} tick={{ fontSize: 11, fill: C.grayDark }} axisLine={false} tickLine={false} unit="%" />
-            <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
-            <Line type="monotone" dataKey="yield" stroke={C.agpBlue} strokeWidth={3} dot={{ fill: C.agpBlue, r: 4 }} activeDot={{ r: 6 }} />
-            <Line type="monotone" dataKey={() => META_YIELD} stroke={C.success} strokeWidth={2} strokeDasharray="5 5" dot={false} name="Meta" />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Defeitos */}
-      <div className="card">
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Distribuição de Resultados</div>
-        <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 14 }}>Panorama geral de aprovados vs defeitos</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 20, flexWrap: "wrap", justifyContent: "center" }}>
-          <ResponsiveContainer width={200} height={200}>
-            <PieChart>
-              <Pie data={defeitosPie} dataKey="valor" nameKey="name" cx="50%" cy="50%" outerRadius={80} innerRadius={45}>
-                {defeitosPie.map((e, i) => <Cell key={i} fill={e.cor} />)}
-              </Pie>
-              <Tooltip contentStyle={{ borderRadius: 10, border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.1)" }} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {defeitosPie.map(d => (
-              <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 14, height: 14, borderRadius: 4, background: d.cor }} />
-                <span style={{ fontSize: 13, color: C.text }}><strong>{d.valor}</strong> {d.name}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Resumo numérico */}
-      <div className="card">
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 14 }}>Indicadores do Período</div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          <div style={{ background: C.successLight, borderRadius: 10, padding: 14, textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.success }}>{totalAprovados}</div>
-            <div style={{ fontSize: 11, color: C.success }}>Aprovados</div>
-          </div>
-          <div style={{ background: C.dangerLight, borderRadius: 10, padding: 14, textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.danger }}>{totalReprovados}</div>
-            <div style={{ fontSize: 11, color: C.danger }}>Reprovados</div>
-          </div>
-          <div style={{ background: C.bluePale, borderRadius: 10, padding: 14, textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.blue }}>{totalCiclos}</div>
-            <div style={{ fontSize: 11, color: C.blue }}>Ciclos avaliados</div>
-          </div>
-          <div style={{ background: C.warningLight, borderRadius: 10, padding: 14, textAlign: "center" }}>
-            <div style={{ fontSize: 22, fontWeight: 700, color: C.warning }}>{dobras + mole}</div>
-            <div style={{ fontSize: 11, color: C.warning }}>Total defeitos</div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function AutoclaveVisao({ ciclos, setCicloAvaliando, setAba }) {
-  const tot = ciclos.reduce((s, c) => s + c.paineis.length, 0);
-  const aval = ciclos.filter(c => c.avaliado);
-  const aprov = aval.reduce((s, c) => s + c.paineis.filter(p => p.resultado === "aprovado").length, 0);
-  const reprov = aval.reduce((s, c) => s + c.paineis.filter(p => p.resultado === "reprovado").length, 0);
-  const totAval = aval.reduce((s, c) => s + c.paineis.length, 0);
-  const repro = ciclos.reduce((s, c) => s + c.paineis.filter(p => p.reprocesso).length, 0);
-  const taxa = totAval > 0 ? Math.round((aprov / totAval) * 100) : 0;
-  const r = 38;
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10 }}>
-        <CardNum label="Ciclos" valor={ciclos.length} cor={C.blue} />
-        <CardNum label="Enviados" valor={tot} cor={C.agpBlue} />
-        <CardNum label="Reprocessos" valor={repro} cor={C.warning} />
-        <CardNum label="Avaliados" valor={totAval} cor={C.grayDark} />
-        <CardNum label="Aprovados" valor={aprov} cor={C.success} />
-        <CardNum label="Reprovados" valor={reprov} cor={C.danger} />
-      </div>
-      <div className="card" style={{ display: "flex", alignItems: "center", gap: 20 }}>
-        <div style={{ position: "relative", width: 90, height: 90, flexShrink: 0 }}>
-          <svg viewBox="0 0 90 90" width="90" height="90">
-            <circle cx="45" cy="45" r={r} fill="none" stroke={C.dangerLight} strokeWidth="10" />
-            <circle cx="45" cy="45" r={r} fill="none" stroke={C.success} strokeWidth="10"
-              strokeDasharray={`${2 * Math.PI * r * taxa / 100} ${2 * Math.PI * r}`}
-              strokeLinecap="round" transform="rotate(-90 45 45)" />
-          </svg>
-          <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", textAlign: "center" }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: C.success }}>{taxa}%</div>
-          </div>
-        </div>
-        <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Taxa de Aprovação</div>
-          <div style={{ fontSize: 13, color: C.grayDark }}>{aval.length} ciclo(s) avaliado(s)</div>
-          <div style={{ display: "flex", gap: 10, marginTop: 8 }}>
-            <span style={{ fontSize: 13, color: C.success, fontWeight: 600 }}>✓ {aprov}</span>
-            <span style={{ fontSize: 13, color: C.danger, fontWeight: 600 }}>✗ {reprov}</span>
-          </div>
-        </div>
-      </div>
-      <div className="card" style={{ padding: 0, overflow: "hidden" }}>
-        <div style={{ padding: "14px 18px", borderBottom: `1px solid ${C.gray}`, fontSize: 15, fontWeight: 700 }}>Ciclos Registrados</div>
-        {ciclos.map((c, i) => {
-          const ap = c.paineis.filter(p => p.resultado === "aprovado").length;
-          const rp = c.paineis.filter(p => p.resultado === "reprovado").length;
-          const re = c.paineis.filter(p => p.reprocesso).length;
-          return (
-            <div key={c.id} style={{ padding: "14px 18px", borderBottom: i < ciclos.length - 1 ? `1px solid ${C.gray}` : "none", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-              <div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: C.blue, fontSize: 14 }}>{c.id}</span>
-                  {c.fimDeSemana && <Tag bg={C.purpleLight} color={C.purple}>Fim de semana</Tag>}
-                  <Tag bg={c.avaliado ? C.successLight : C.warningLight} color={c.avaliado ? C.success : C.warning}>
-                    {c.avaliado ? "✓ Avaliado" : "⏳ Aguardando"}
-                  </Tag>
-                </div>
-                <div style={{ fontSize: 12, color: C.grayDark }}>Envio: {c.dataEnvio} → Retorno: {c.dataRetorno} • #{c.matricula}</div>
-              </div>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                <Tag bg={C.bluePale} color={C.blue}>{c.paineis.length} painéis</Tag>
-                {re > 0 && <Tag bg={C.warningLight} color={C.warning}>↺ {re}</Tag>}
-                {c.avaliado && <><Tag bg={C.successLight} color={C.success}>✓ {ap}</Tag><Tag bg={C.dangerLight} color={C.danger}>✗ {rp}</Tag></>}
-                {!c.avaliado && (
-                  <button onClick={() => { setCicloAvaliando(c.id); setAba("avaliar"); }}
-                    style={{ padding: "6px 12px", background: C.blue, color: "white", border: "none", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: "'DM Sans'" }}>
-                    Avaliar
-                  </button>
-                )}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function AutoclaveAvaliar({ ciclos, setCiclos, cicloAvaliando, setCicloAvaliando, setAba }) {
-  const pendentes = ciclos.filter(c => !c.avaliado);
-  const atual = cicloAvaliando ? ciclos.find(c => c.id === cicloAvaliando) : null;
-
-  function marcar(cicloId, codigo, resultado, defeito) {
-    setCiclos(prev => prev.map(c => c.id !== cicloId ? c : {
-      ...c, paineis: c.paineis.map(p => p.codigo === codigo ? { ...p, resultado, defeito } : p)
-    }));
-  }
-
-  function finalizar(cicloId) {
-    setCiclos(prev => prev.map(c => c.id === cicloId ? { ...c, avaliado: true } : c));
-    setCicloAvaliando(null);
-    setAba("dashboard");
-  }
-
-  if (!atual) {
-    if (pendentes.length === 0) {
-      return (
-        <div className="card" style={{ textAlign: "center", padding: 40, color: C.grayDark }}>
-          <div style={{ fontSize: 36, marginBottom: 12 }}>✅</div>
-          <div style={{ fontSize: 15, fontWeight: 600 }}>Todos os ciclos foram avaliados!</div>
-        </div>
-      );
-    }
-    return (
-      <div className="card">
-        <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>Ciclos Aguardando Avaliação</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {pendentes.map(c => (
-            <div key={c.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: C.gray, borderRadius: 12, padding: "14px 16px", flexWrap: "wrap", gap: 8 }}>
-              <div>
-                <div style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: C.blue, fontSize: 15, marginBottom: 4 }}>{c.id}</div>
-                <div style={{ fontSize: 12, color: C.grayDark }}>Enviado: {c.dataEnvio} • {c.paineis.length} painéis • #{c.matricula}</div>
-              </div>
-              <button onClick={() => setCicloAvaliando(c.id)}
-                style={{ padding: "8px 16px", background: C.blue, color: "white", border: "none", borderRadius: 8, fontFamily: "'DM Sans'", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-                Avaliar este ciclo
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="card">
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 8 }}>
-        <div>
-          <div style={{ fontSize: 13, color: C.grayDark, marginBottom: 2 }}>Avaliando ciclo</div>
-          <div style={{ fontFamily: "'DM Mono'", fontSize: 20, fontWeight: 700, color: C.blue }}>{atual.id} — {atual.dataEnvio}</div>
-        </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          <Tag bg={C.bluePale} color={C.blue}>{atual.paineis.length} painéis</Tag>
-          <Tag bg={C.successLight} color={C.success}>✓ {atual.paineis.filter(p => p.resultado === "aprovado").length}</Tag>
-          <Tag bg={C.dangerLight} color={C.danger}>✗ {atual.paineis.filter(p => p.resultado === "reprovado").length}</Tag>
-        </div>
-      </div>
-
-      {/* Carrinho visual com resultados se disponível */}
-      {atual.carrinho && (
-        <div style={{ marginBottom: 20 }}>
-          <div className="lbl" style={{ color: C.blue }}>Posição no Carrinho</div>
-          <Carrinho
-            carrinho={atual.carrinho}
-            setCarrinho={() => {}}
-            soLeitura={true}
-            resultados={Object.fromEntries(atual.paineis.map(p => [p.codigo, p]))}
-          />
-        </div>
-      )}
-
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 20 }}>
-        {atual.paineis.map((p, i) => {
-          const bgColor = p.resultado === "aprovado" ? C.successLight : p.resultado === "reprovado" ? C.dangerLight : C.gray;
-          const bdColor = p.resultado === "aprovado" ? C.success : p.resultado === "reprovado" ? C.danger : C.grayMid;
-          const pos = p.posicao ? `P${p.posicao.prateleira} · ${p.posicao.lado === "porta" ? "Direito" : "Esquerdo"}` : null;
-          return (
-            <div key={i} style={{ background: bgColor, borderRadius: 12, padding: "12px 16px", border: `1.5px solid ${bdColor}` }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                  <span style={{ fontFamily: "'DM Mono'", fontWeight: 700, color: C.blue, fontSize: 15 }}>{p.codigo}</span>
-                  {p.reprocesso && <Tag bg={C.warningLight} color={C.warning}>↺ Reprocesso</Tag>}
-                  {pos && <span style={{ fontSize: 11, color: C.grayDark, background: "white", padding: "2px 8px", borderRadius: 6 }}>{pos}</span>}
-                </div>
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button onClick={() => marcar(atual.id, p.codigo, "aprovado", null)}
-                    style={{ padding: "6px 12px", border: `1.5px solid ${C.success}`, background: p.resultado === "aprovado" ? C.success : "white", color: p.resultado === "aprovado" ? "white" : C.success, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>
-                    ✓ Bom
-                  </button>
-                  <button onClick={() => marcar(atual.id, p.codigo, "reprovado", "dobras")}
-                    style={{ padding: "6px 10px", border: `1.5px solid ${C.danger}`, background: p.resultado === "reprovado" && p.defeito === "dobras" ? C.danger : "white", color: p.resultado === "reprovado" && p.defeito === "dobras" ? "white" : C.danger, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                    Dobras
-                  </button>
-                  <button onClick={() => marcar(atual.id, p.codigo, "reprovado", "mole")}
-                    style={{ padding: "6px 10px", border: `1.5px solid ${C.warning}`, background: p.resultado === "reprovado" && p.defeito === "mole" ? C.warning : "white", color: p.resultado === "reprovado" && p.defeito === "mole" ? "white" : C.warning, borderRadius: 8, fontFamily: "'DM Sans'", fontSize: 11, fontWeight: 600, cursor: "pointer" }}>
-                    Mole
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-      <div style={{ display: "flex", gap: 10 }}>
-        <button onClick={() => setCicloAvaliando(null)}
-          style={{ flex: 1, padding: "12px", border: `1.5px solid ${C.grayMid}`, background: "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 600, cursor: "pointer", color: C.grayDark }}>
-          Voltar
-        </button>
-        <button onClick={() => finalizar(atual.id)}
-          style={{ flex: 2, padding: "12px", background: C.success, color: "white", border: "none", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 700, cursor: "pointer" }}>
-          ✓ Finalizar Avaliação
-        </button>
-      </div>
-    </div>
-  );
-}
-
 // ─── main ─────────────────────────────────────────────────────────
 
 export default function App() {
@@ -791,20 +112,17 @@ export default function App() {
   const [tela, setTela] = useState("dashboard");
   const [abaReg, setAbaReg] = useState("hora");
   const [abaHist, setAbaHist] = useState("hora");
-  const [abaAuto, setAbaAuto] = useState("dashboard");
   const [periodo, setPeriodo] = useState("dia");
   const [painelSel, setPainelSel] = useState(null);
   const [busca, setBusca] = useState("");
   const [paineis, setPaineis] = useState(MOCK_PAINEIS);
   const [horas, setHoras] = useState(MOCK_HORA);
-  const [ciclos, setCiclos] = useState(MOCK_CICLOS);
-  const [cicloAval, setCicloAval] = useState(null);
+  const [ciclos, setCiclos] = useCiclos();
   const [novoCod, setNovoCod] = useState("");
   const [ok, setOk] = useState(false);
 
   const [fh, setFh] = useState({ matricula: "", turno: "1º", intervalo: "07h → 08h", cortados: "", embolsados: "", autoclave: "", aprovados: "", rep_dobras: "", rep_mole: "", amostras: "", obs: "" });
   const [fp, setFp] = useState({ matricula: "", turno: "1º", codigo: "", tipo: "novo", intervalo: "07h → 08h", rep_dobras: "", rep_mole: "", amostras: "", motivo: "", descricao: "" });
-  const [fc, setFc] = useState({ matricula: "", dataEnvio: "", fimDeSemana: false, obs: "", paineis: [], carrinho: carrinhoVazio() });
   const [ehFh, setEhFh] = useState({});
   const [ehFp, setEhFp] = useState({});
 
@@ -841,25 +159,12 @@ export default function App() {
     flash();
   }
 
-  function salvarCiclo() {
-    if (!fc.matricula) return;
-    // Collect paineis from carrinho
-    const paineisDoCarro = Object.entries(fc.carrinho).flatMap(([key, slots]) => {
-      const [prat, lado] = key.split("-");
-      return slots.map((cod, si) => cod ? { codigo: cod, reprocesso: false, resultado: null, defeito: null, posicao: { prateleira: Number(prat), lado, slot: si } } : null).filter(Boolean);
-    });
-    if (paineisDoCarro.length === 0) return;
-    const id = `C${String(ciclos.length + 1).padStart(3, "0")}`;
-    const de = fc.dataEnvio ? new Date(fc.dataEnvio).toLocaleDateString("pt-BR") : hoje;
-    const dr = fc.dataEnvio ? new Date(new Date(fc.dataEnvio).getTime() + 86400000).toLocaleDateString("pt-BR") : hoje;
-    setCiclos(prev => [...prev, { id, dataEnvio: de, dataRetorno: dr, matricula: fc.matricula, fimDeSemana: fc.fimDeSemana, observacao: fc.obs || null, avaliado: false, paineis: paineisDoCarro, carrinho: fc.carrinho }]);
-    setFc({ matricula: "", dataEnvio: "", fimDeSemana: false, obs: "", paineis: [], carrinho: carrinhoVazio() });
-    setAbaAuto("dashboard");
-  }
 
-  const codsUnicos = [...new Set(paineis.map(p => p.codigo))];
+
+  const codsUnicos = [...new Set([...paineis.map(p => p.codigo), ...ciclos.filter(c => !c.demo).flatMap(c => Object.values(c.posicoes || {}).map(p => p?.codigo).filter(Boolean))])];
   const codsFiltrados = codsUnicos.filter(c => c.includes(busca));
   const histPainel = painelSel ? paineis.filter(p => p.codigo === painelSel) : [];
+  const histAuto = painelSel ? historicoAutoclave(ciclos, painelSel) : [];
   const grafico = periodo === "dia" ? GRAFICO_DIA : periodo === "semana" ? GRAFICO_SEMANA : GRAFICO_MES;
   const xKey = periodo === "dia" ? "hora" : periodo === "semana" ? "dia" : "semana";
 
@@ -1208,9 +513,11 @@ export default function App() {
                         <div style={{ fontSize: 11, color: C.grayDark, marginTop: 2 }}>{hist[0]?.data} • {hist.length} registro(s)</div>
                       </div>
                       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-                        <Tag bg={ult?.status === "aprovado" ? C.successLight : C.dangerLight} color={ult?.status === "aprovado" ? C.success : C.danger}>
-                          {ult?.status === "aprovado" ? "✓ Aprovado" : "✗ Reprovado"}
-                        </Tag>
+                        {ult ? (
+                          <Tag bg={ult.status === "aprovado" ? C.successLight : C.dangerLight} color={ult.status === "aprovado" ? C.success : C.danger}>
+                            {ult.status === "aprovado" ? "✓ Aprovado" : "✗ Reprovado"}
+                          </Tag>
+                        ) : <Tag bg={C.warningLight} color={C.warning}>Autoclave</Tag>}
                         {ret > 0 && <Tag bg={C.warningLight} color={C.warning}>↺ {ret}x retrabalho</Tag>}
                       </div>
                     </div>
@@ -1237,6 +544,22 @@ export default function App() {
                     </div>
                   </div>
                 </div>
+                {histAuto.length > 0 && (
+                  <div style={{ marginBottom: 18 }}>
+                    <div className="lbl" style={{ color: C.warning }}>Autoclave</div>
+                    {histAuto.map((a, i) => (
+                      <div key={i} style={{ background: C.gray, borderRadius: 12, padding: "12px 14px", marginBottom: 8, display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
+                        <div>
+                          <div style={{ fontWeight: 700, color: C.blue }}>Ciclo {a.ciclo.numero} <span style={{ fontWeight: 400, fontSize: 12, color: C.grayDark }}>· {new Date(a.ciclo.data + "T12:00:00").toLocaleDateString("pt-BR")}</span></div>
+                          <div style={{ fontSize: 12, color: C.grayDark, marginTop: 2 }}>Andar {a.andar} · {NOME_LADO[a.lado]} · posição {a.pos} · vácuo {ultimoVacuo(a) ?? "—"}{a.camadas === 12 ? " · 12 camadas" : ""}</div>
+                        </div>
+                        <Tag bg={a.resultado === "ok" ? C.successLight : a.resultado === "reprocesso" ? C.dangerLight : C.warningLight} color={a.resultado === "ok" ? C.success : a.resultado === "reprocesso" ? C.danger : C.warning}>
+                          {a.resultado === "ok" ? (a.liberadoEm ? "✓ Liberado" : "✓ OK") : a.resultado === "reprocesso" ? "↺ Reprocesso" : "Na autoclave"}
+                        </Tag>
+                      </div>
+                    ))}
+                  </div>
+                )}
                 <div style={{ paddingLeft: 8 }}>
                   {histPainel.map((r, i) => (
                     <div key={i} className="tl">
@@ -1268,57 +591,7 @@ export default function App() {
         )}
 
         {/* ── AUTOCLAVE ── */}
-        {tela === "autoclave" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div style={{ display: "flex", background: "white", borderRadius: 12, padding: 4, gap: 4, boxShadow: "0 1px 4px rgba(0,58,140,0.07)" }}>
-              {[["dashboard","📊 Visão Geral"],["novo","➕ Novo Ciclo"],["avaliar","✅ Avaliar Retorno"]].map(([k,v]) => (
-                <button key={k} className="snav" onClick={() => setAbaAuto(k)}
-                  style={{ fontWeight: abaAuto === k ? 700 : 500, background: abaAuto === k ? C.blue : "none", color: abaAuto === k ? "white" : C.grayDark }}>
-                  {v}
-                </button>
-              ))}
-            </div>
-
-            {abaAuto === "dashboard" && <AutoclaveVisao ciclos={ciclos} setCicloAvaliando={setCicloAval} setAba={setAbaAuto} />}
-
-            {abaAuto === "novo" && (
-              <div style={{ maxWidth: 600, margin: "0 auto", width: "100%" }}>
-                <div className="card" style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Registrar Envio para Autoclave</div>
-                    <div style={{ fontSize: 13, color: C.grayDark }}>Preencha os dados do ciclo</div>
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                    <div>
-                      <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Matrícula</label>
-                      <input className="field" placeholder="Ex: 3789" value={fc.matricula} onChange={e => setFc(p => ({ ...p, matricula: e.target.value.replace(/\D/g, "") }))} style={{ fontFamily: "'DM Mono'", fontWeight: 600, letterSpacing: 2 }} />
-                    </div>
-                    <div>
-                      <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Data de Envio</label>
-                      <input className="field" type="date" value={fc.dataEnvio} onChange={e => setFc(p => ({ ...p, dataEnvio: e.target.value }))} />
-                    </div>
-                  </div>
-                  <button onClick={() => setFc(p => ({ ...p, fimDeSemana: !p.fimDeSemana }))}
-                    style={{ padding: "10px 16px", border: `1.5px solid ${fc.fimDeSemana ? C.purple : C.grayMid}`, background: fc.fimDeSemana ? C.purpleLight : "white", borderRadius: 10, fontFamily: "'DM Sans'", fontSize: 14, fontWeight: 500, cursor: "pointer", color: fc.fimDeSemana ? C.purple : C.grayDark, textAlign: "left" }}>
-                    {fc.fimDeSemana ? "✓" : "○"} Ciclo de Fim de Semana
-                  </button>
-                  <div style={{ borderTop: `1px solid ${C.gray}`, paddingTop: 14 }}>
-                    <div className="lbl" style={{ color: C.blue }}>Carrinho — Posição dos Painéis</div>
-                    <div style={{ fontSize: 12, color: C.grayDark, marginBottom: 10 }}>Toque em cada espaço para adicionar o código do painel. P1 = prateleira de baixo, P4 = de cima.</div>
-                    <Carrinho carrinho={fc.carrinho} setCarrinho={c => setFc(p => ({ ...p, carrinho: c }))} soLeitura={false} resultados={null} />
-                  </div>
-                  <div>
-                    <label style={{ fontSize: 13, fontWeight: 500, color: C.grayDark, display: "block", marginBottom: 6 }}>Observação (opcional)</label>
-                    <textarea className="field" rows={2} placeholder="Ex: Carrinhos 1 e 2 enviados juntos..." value={fc.obs} onChange={e => setFc(p => ({ ...p, obs: e.target.value }))} style={{ resize: "vertical" }} />
-                  </div>
-                  <button className="btn" onClick={salvarCiclo}>Confirmar Envio para Autoclave</button>
-                </div>
-              </div>
-            )}
-
-            {abaAuto === "avaliar" && <AutoclaveAvaliar ciclos={ciclos} setCiclos={setCiclos} cicloAvaliando={cicloAval} setCicloAvaliando={setCicloAval} setAba={setAbaAuto} />}
-          </div>
-        )}
+        {tela === "autoclave" && <AutoclaveModulo ciclos={ciclos} setCiclos={setCiclos} />}
 
         {/* ── ANALYTICS ── */}
         {tela === "analytics" && <Analytics ciclos={ciclos} />}
